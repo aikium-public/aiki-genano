@@ -1,0 +1,73 @@
+name: binder_design_100kbinder_len126_continue
+
+# ==============================================================================
+# SFT CONTINUE: resume 100k len126 run from checkpoint-10000
+# Goal: increase eval resolution (eval_steps=250) for a clearer curve.
+# ==============================================================================
+
+sft:
+  # Keep same LoRA targets as the original 100k run (must match for resume).
+  lora_targets: ['c_attn', 'c_proj', 'c_fc', 'lm_head', 'wte', 'wpe']
+
+  script_args:
+    base_model_name: nferruz/ProtGPT2
+    new_model_name: NanoBody-design-sft-response-only-100k-len126-r64
+
+    # Train ONLY on protein response tokens (given peptide prompt)
+    response_sft_stage: true
+
+    # Data folder inside docker (mounted at /app/data)
+    data_split_dir: /app/data
+    streaming: false
+    shuffle_buffer: 5000
+    packing: false
+
+    # LoRA hyperparameters (must match the run you are resuming)
+    lora_r: 64
+    lora_alpha: 128
+    lora_dropout: 0.05
+
+  training_args:
+    max_seq_length: 1024
+
+    # Must be the SAME output_dir as the run you want to continue
+    output_dir: /app/checkpoints/SFT
+
+    # Resume from the last checkpoint of the run above
+    resume_from_checkpoint: /app/checkpoints/SFT/checkpoint-14000
+
+    # Extend training by ~4k steps for a finer-grained eval curve
+    max_steps: 20000
+    warmup_steps: 0 #500 
+    # Already past warmup, won't matter so set to 0, otherwise will cause error
+
+    # Keep batch settings identical to the base run for comparability
+    per_device_train_batch_size: 12
+    per_device_eval_batch_size: 24
+    gradient_accumulation_steps: 4  # effective batch = 48
+
+    # Higher eval frequency (resolution check)
+    eval_steps: 250
+    save_steps: 1000
+    save_total_limit: 10
+    load_best_model_at_end: true
+    metric_for_best_model: eval_loss
+
+    # Logging
+    logging_dir: /app/output/logs/NanoBody-design_100k_len126_sft_continue
+    logging_steps: 10
+    evaluation_strategy: steps
+    save_strategy: steps
+    report_to: wandb
+    log_freq: 10
+
+    # Optimization (trainer will restore optimizer/scheduler state when resuming)
+    learning_rate: 2e-4
+    lr_scheduler_type: cosine
+    weight_decay: 0.01
+    max_grad_norm: 1.0
+
+    # System
+    find_unused_parameters: false
+    gradient_checkpointing: false  # NOTE: sft.py raises if set true
+

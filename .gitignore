@@ -1,0 +1,70 @@
+# Byte-compiled / cached
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Packaging / editable installs
+*.egg-info/
+*.egg
+build/
+dist/
+.eggs/
+pip-wheel-metadata/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# Secrets / local settings
+.env
+.env.local
+
+# Local data / model / result paths (not redistributed).
+# /data/* (not /data/) so that the umap_cache override below can take effect —
+# git refuses to re-include files inside a directory that is itself ignored.
+/data/*
+/results/
+/checkpoints/
+wandb/
+/logs/
+/outputs/
+
+# Large UMAP embedding cache lives in GCS (see data/umap_cache/MANIFEST.md);
+# small UMAP coordinate caches, manifest, and fetch script are tracked
+# in-repo via the directory re-include below. metadata.csv is forbidden
+# because it carries (peptide, generated_sequence) pairs that constitute
+# proprietary screening data — leaks here are why selfcheck_sft_sample100,
+# selfcheck_out/, and metadata.csv were purged on 2026-04-25.
+!/data/umap_cache/
+/data/umap_cache/embeddings.npz
+/data/umap_cache/metadata.csv
+
+# IP-bearing intermediate artefacts. Any file with both `peptide` and
+# `generated_sequence` columns leaks Aikium's screening corpus and must
+# never be tracked. Self-check / sample dumps fall in this bucket.
+benchmarks/run/selfcheck_sft_sample*.csv
+benchmarks/run/selfcheck_out/
+
+# OS / misc
+.DS_Store
+Thumbs.db
+*:Zone.Identifier
+
+# Manuscript artifacts are tracked in this private repo. The mirror to
+# aikium-public/aiki-genano is a one-shot supervised pass that excludes
+# paper/ and data/ at the staging step rather than via .gitignore.

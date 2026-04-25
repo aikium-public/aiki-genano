@@ -1,0 +1,10 @@
+/home/venkatesh/HBG/scripts/GeNano/benchmark/.venv-bench/lib/python3.12/site-packages/transformers/tokenization_utils_base.py:1601: FutureWarning: `clean_up_tokenization_spaces` was not set. It will be set to `True` by default. This behavior will be depracted in transformers v4.45, and will be then set to `False` by default. For more details check this issue: https://github.com/huggingface/transformers/issues/31884
+  warnings.warn(
+[nanoBERT] loaded in 5.6s on cuda
+[nanoBERT] mask token: '<mask>' id=4
+>nanobert_0  len=118
+QVQLVESGGGSVQAGGSLRLSCAASGFTFSSYAMSWVRQAPGKGLEWVSAIDSGGGSTHYADSVKGRFTISRDNAKNTLYLQMNSLKSEDTALYYCAAAWSVGGAAAWGQGTQVTVSS
+>nanobert_1  len=118
+QVQLVESGGGSVQAGGSLRLSCAASGFTFSSYAMSWVRQAPGKGLEWVSAIDSGGGSTHYADSVKGRFTISRDNAKNTLYLQMNSLKSEDTALYYCAAALGGRSAAAWGQGTQVTVSS
+>nanobert_2  len=118
+QVQLVESGGGSVQAGGSLRLSCAASGFTFSSYAMSWVRQAPGKGLEWVSAIDSGGGSTHYADSVKGRFTISRDNAKNTLYLQMNSLKSEDTALYYCAAAAGCGIAAAWGQGTQVTVSS

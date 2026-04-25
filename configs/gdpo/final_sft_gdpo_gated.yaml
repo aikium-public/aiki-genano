@@ -1,0 +1,102 @@
+name: final_sft_gdpo_gated
+
+gdpo:
+  lora_targets: ['c_attn', 'c_proj', 'c_fc', 'lm_head', 'wte', 'wpe']
+
+  script_args:
+    # Use MERGED SFT model (not PEFT checkpoint) - preserves stop token generation
+    sft_model_path: /app/checkpoints/SFT
+
+    # Original base model (only needed if sft_model_path is a PEFT checkpoint)
+    base_model_name: nferruz/ProtGPT2
+
+    # Output model name (merged)
+    new_model_name: NanoBody-final-sft-gdpo-gated-4rewrads
+
+    # Whether to merge adapter after training (set false to just save adapter)
+    merge_adapter: true
+
+    # Data directory (must contain training.csv and testing.csv)
+    data_split_dir: /app/data
+
+    # LoRA parameters
+    lora_r: 32
+    lora_alpha: 64
+    lora_dropout: 0.05
+
+    # GDPO-specific parameters
+    num_generations: 16         # G in GDPO paper (rollouts per prompt)
+    max_completion_length: 60   # Hard cap at p99 token length - no headroom
+    temperature: 1.2            # Same as original
+    top_p: 0.90                 # Nucleus sampling
+    top_k: 0                    # Disabled (use nucleus only)
+    beta: 1.0e-3                # KL penalty (lower; integrity reward prevents length hacking)
+
+    # NBv1 reward set (6) — order must match gdpo.py reward_funcs:
+    # [0] fr2_aggregation      — FR2 hydrophobicity risk (KD 1982)
+    # [1] hydrophobic_patch    — consecutive hydrophobic stretches
+    # [2] liability            — chemical liabilities (hyperbolic, k=10)
+    # [3] expression           — E. coli soluble expression (Wilkinson-Harrison 1991)
+    # [4] vhh_hallmark         — VHH FR2 tetrad (Muyldermans 2013)
+    # [5] scaffold_integrity   — Huber length + linker + Cys (NOT gated)
+    reward_weights: [0.15, 0.20, 0.25, 0.15, 0.15, 0.10]
+
+    # Peptide-based subsetting
+    subset_seed: 42
+    max_train_samples: null
+    max_eval_samples: null
+    max_unique_peptides_train: null   # null = all peptides
+    samples_per_peptide_train: 4000
+    max_unique_peptides_eval: 10
+    samples_per_peptide_eval: 50
+
+  training_args:
+    output_dir: /app/output/results/final_sft_gdpo_gated_4rewards
+    overwrite_output_dir: false
+    resume_from_checkpoint: false
+
+    # Train to 4k steps (monitor early - expect signal by ~1500)
+    max_steps: 4000
+
+    # Batch sizes (must be divisible by num_generations=16)
+    per_device_train_batch_size: 16
+    per_device_eval_batch_size: 16
+    gradient_accumulation_steps: 4
+
+    # Learning rate
+    learning_rate: 1.0e-5
+    warmup_steps: 200
+    lr_scheduler_type: cosine
+    weight_decay: 0.05
+    optim: paged_adamw_32bit
+
+    # Logging
+    logging_steps: 3
+    report_to: wandb
+
+    # Wandb settings
+    run_name: final_sft_gdpo_gated_4rewards 
+
+    # Checkpointing
+    save_steps: 500
+    save_total_limit: 6
+
+    # Evaluation - disabled (train only)
+    eval_strategy: "no"
+
+    # Memory optimization
+    gradient_checkpointing: false
+    bf16: true
+    fp16: false
+
+    # Gradient clipping
+    max_grad_norm: 1.0
+
+    # PPO/GRPO stability knobs
+    epsilon: 0.1
+    epsilon_high: 0.1
+    loss_type: bnpo
+    disable_dropout: true
+
+    # Reproducibility
+    seed: 42

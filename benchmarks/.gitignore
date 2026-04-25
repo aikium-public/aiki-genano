@@ -1,0 +1,24 @@
+# Per-session venvs and caches
+.venv*/
+__pycache__/
+*.pyc
+
+# Secrets
+.env
+*.token
+
+# Large weight files (should live in HF cache / ~/.cache/huggingface)
+*.pt
+*.bin
+*.safetensors
+*.pth
+*.ckpt
+
+# Full-scale generation runs: keep smoke outputs in example_outputs/ only,
+# push large campaigns to ../data/ or a separate bucket
+benchmark_out/
+run_outputs/
+
+# IDE
+.idea/
+.vscode/

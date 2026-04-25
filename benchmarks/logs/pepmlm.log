@@ -1,0 +1,8 @@
+[pepmlm] loaded in 46.7s on cuda
+[pepmlm] input: DIQMTQSPSSLSASVGDRVTITC<mask><mask><mask...  total_ids=torch.Size([1, 35])
+>pepmlm_0  target_len=23 binder_len=10
+binder: SSEYDVVIHE
+>pepmlm_1  target_len=23 binder_len=10
+binder: PEGVYVVLNG
+>pepmlm_2  target_len=23 binder_len=10
+binder: TEGEGLLVVP

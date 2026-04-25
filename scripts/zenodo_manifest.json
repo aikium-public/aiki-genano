@@ -1,0 +1,51 @@
+{
+  "_about": "Single source of truth for Zenodo asset URLs + sha256. Bumped on every Zenodo deposit revision. The downloader (scripts/download_checkpoints.sh) reads this and verifies sha256 on every pull. Per AIKI_GENANO_LAUNCH_HANDOFF.md anti-pattern #4: don't trust DOIs from memory.",
+  "_status": "PLACEHOLDER — DOI not yet reserved on Zenodo. Bump record_doi + per-asset urls + per-asset sha256 after the upload, before any GHCR push.",
+  "record_doi": "10.5281/zenodo.PLACEHOLDER",
+  "record_url": "https://zenodo.org/records/PLACEHOLDER",
+  "license": "CC-BY-NC-4.0",
+  "version": "1.0.0",
+  "checkpoints": {
+    "SFT": {
+      "description": "ProtGPT2 fine-tuned on 1.35M nanobody-epitope pairs (paper Stage 1, full merged model).",
+      "format": "huggingface_full",
+      "loads_as": "AutoModelForCausalLM.from_pretrained",
+      "subdir": "model_weights/SFT/NanoBody-design-sft-response-only-100k-len126-r64",
+      "approx_size_mb": 1450,
+      "url": "https://zenodo.org/records/PLACEHOLDER/files/SFT.tar.gz",
+      "sha256": "PLACEHOLDER_FILL_AFTER_UPLOAD"
+    },
+    "DPO": {
+      "description": "DPO LoRA adapter (paper Stage 2, checkpoint-6000) trained on top of SFT.",
+      "format": "peft_adapter",
+      "loads_as": "PeftModel.from_pretrained",
+      "subdir": "model_weights/DPO/checkpoint-6000",
+      "approx_size_mb": 800,
+      "url": "https://zenodo.org/records/PLACEHOLDER/files/DPO.tar.gz",
+      "sha256": "PLACEHOLDER_FILL_AFTER_UPLOAD"
+    },
+    "GDPO_DPO": {
+      "description": "GDPO LoRA adapter from DPO init (paper headline, checkpoint-2000).",
+      "format": "peft_adapter",
+      "loads_as": "PeftModel.from_pretrained",
+      "subdir": "model_weights/GDPO_DPO/checkpoint-2000",
+      "approx_size_mb": 560,
+      "url": "https://zenodo.org/records/PLACEHOLDER/files/GDPO_DPO.tar.gz",
+      "sha256": "PLACEHOLDER_FILL_AFTER_UPLOAD"
+    },
+    "GDPO_SFT": {
+      "description": "GDPO LoRA adapter from SFT init (paper ablation, checkpoint-2000).",
+      "format": "peft_adapter",
+      "loads_as": "PeftModel.from_pretrained",
+      "subdir": "model_weights/GDPO_SFT/checkpoint-2000",
+      "approx_size_mb": 560,
+      "url": "https://zenodo.org/records/PLACEHOLDER/files/GDPO_SFT.tar.gz",
+      "sha256": "PLACEHOLDER_FILL_AFTER_UPLOAD"
+    }
+  },
+  "training_subset": {
+    "description": "10-target representative subset of the screening data + matched DPO pairs.",
+    "url": "https://zenodo.org/records/PLACEHOLDER/files/training_subset.tar.gz",
+    "sha256": "PLACEHOLDER_FILL_AFTER_UPLOAD"
+  }
+}

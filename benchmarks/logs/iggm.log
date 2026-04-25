@@ -1,0 +1,37 @@
+/home/venkatesh/miniforge3/envs/iggm/lib/python3.10/site-packages/sympy/multipledispatch/dispatcher.py:30: AmbiguityWarning: 
+Ambiguities exist in dispatched function union_sets
+
+The following signatures may result in ambiguous behavior:
+	[ProductSet, Set], [Interval, Set]
+
+
+Consider making the following additions:
+
+@dispatch(ProductSet, Set)
+def union_sets(...)
+  warn(warning_text(dispatcher.name, ambiguities), AmbiguityWarning)
+Loading ESM PPI 650m AB model
+Loading Antibody Design Model
+Download IGSO3Buffer for accelerating SO3 operations
+[04/23 22:34:33 root]: restoring the pre-trained IgGM-PPI-SeqPT model ...
+[04/23 22:34:35 root]: model:
+  arch: PPIModel
+  attention_mode: native
+  embedding_dim: 1280
+  num_heads: 20
+  num_layers: 33
+  token_dropout: true
+  tokenizer: ESM-1b
+  use_crp_embeddings: true
+
+[04/23 22:34:40 root]: building forward IGSO(3) distributions ...
+[04/23 22:34:40 root]: building backward IGSO(3) distributions ...
+[04/23 22:34:40 root]: restoring the pre-trained IgGM design model ...
+[04/23 22:34:40 root]: Namespace(fasta='examples/fasta.files.design/8q95_B_NA_A/8q95_B_NA_A_CDR_3.fasta', fasta_origin=None, antigen='examples/pdb.files.native/8q95_B_NA_A.pdb', output='/home/venkatesh/HBG/scripts/GeNano/benchmark/benchmark_out/iggm', epitope=[109, 110, 111, 112, 113, 114, 115, 116, 117, 120, 121, 140, 141, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 165, 166, 167], device=None, steps=10, chunk_size=64, temperature=1, num_samples=1, cal_epitope=False, relax=False, max_antigen_size=2000, run_task='design', c_s=1280, c_p=660)
+[04/23 22:34:40 root]: restore the pre-trained IgGM-Ag model /home/venkatesh/HBG/scripts/rational_library/data/external_tools/IgGM/checkpoints/antibody_design_trunk.pth
+#inference samples: 1
+  0%|          | 0/1 [00:00<?, ?it/s][04/23 22:35:32 root]: start ab design model in 50.81 second
+environmental variable <TMPDIR_PRFX> not defined
+using default <TMPDIR_PRFX>
+[04/23 22:35:32 root]: PDB file generated: /home/venkatesh/HBG/scripts/GeNano/benchmark/benchmark_out/iggm/8q95_B_NA_A_CDR_3_0.pdb
+100%|██████████| 1/1 [00:51<00:00, 51.01s/it]100%|██████████| 1/1 [00:51<00:00, 51.01s/it]

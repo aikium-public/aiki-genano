@@ -1,0 +1,15 @@
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards:  50%|█████     | 1/2 [00:03<00:03,  3.89s/it]Loading checkpoint shards: 100%|██████████| 2/2 [00:05<00:00,  2.36s/it]Loading checkpoint shards: 100%|██████████| 2/2 [00:05<00:00,  2.59s/it]
+[nanoabllama] loaded in 7.8s  dtype=4bit-nf4
+The attention mask is not set and cannot be inferred from input because pad token is same as eos token. As a consequence, you may observe unexpected behavior. Please pass your input's `attention_mask` to obtain reliable results.
+
+--- prompt 0: '[Generate by germline] Germline=<IGHV3-3*01>. Seq=<'
+RAW: [Generate by germline] Germline=<IGHV3-3*01>. Seq=<QVQLVESGGGLVQAGGSLRLSCAASGFTFSTYAIGWFRQAPGKEREGVSCISSGGSTNYADSVKGRFTISRDNAKNTVFLQMNSLKPEPAVADSAIYYCAVRRLGFGSYAMGWYLQPGTEAVASITRVGXFGKDVVTVSQMFRLVYNHFKPKGYWCNAXATPVRVTVVSA>
+
+--- prompt 1: '[Generate by superfamily] Superfamily=<Immunoglobulin>. Seq=<'
+RAW: [Generate by superfamily] Superfamily=<Immunoglobulin>. Seq=<QVQLVESGGGLVQAGGSLRLSCAASGFTFNSYLMAWYRQAPGKQREFVASINSSGSTNYADSVKGRFTISRDNAKNTLYLQMNSLKPEDTAVYYCAADRRLYNYDYWGQGTQVTVSS>
+
+--- prompt 2: 'Seq=<QVQLV'
+RAW: Seq=<QVQLVESGGGLVQAGGSLRLSCAASGRTFSSYTMAWFRQAPGKEREFVAAITSGGSTNYADSVKGRFTISRDNAKNMVYLQMNNLKPEDTAVYYCAVGWGRGYEPLYEKAAVYDYWGQGTQVTVSS>
+
+--- prompt 3: '<s>QVQLVESGGG'
+RAW: QVQLVESGGGDVVESGGGDVVESGGGDVVESGGGDVVESGGGDVVESGGGDVVESGGGDVVESGGGDVVESGGGDVVESGGGDVVESGGGDVVESGGGDVVESGGGDVVESGGGDVVESGGGDVVESGGGDVVESGGGDVVESGGGDVVESGGGDVVESGGGDVVESGGGDVVESGGGDVVESGGGDVVESGGGDVVESGGGDVVESGGGDVVESGGGDVVESGGGDVVESGGGDVVESGGGDVVESGGG

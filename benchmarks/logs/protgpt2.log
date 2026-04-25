@@ -1,0 +1,16 @@
+[protgpt2] loading...
+/home/venkatesh/HBG/scripts/GeNano/benchmark/.venv-bench/lib/python3.12/site-packages/transformers/tokenization_utils_base.py:1601: FutureWarning: `clean_up_tokenization_spaces` was not set. It will be set to `True` by default. This behavior will be depracted in transformers v4.45, and will be then set to `False` by default. For more details check this issue: https://github.com/huggingface/transformers/issues/31884
+  warnings.warn(
+[protgpt2] loaded in 2.5s on cuda
+[protgpt2] prompt token count: 5
+[protgpt2] generated in 2.6s, out shape=(5, 65)
+>protgpt2_0  len=16
+SLNFLGGLPPLAALPS
+>protgpt2_1  len=170
+SLNFLGGLPPLPVLLPTPPSPIPAPLPVPLPLPVPLPPTPPSPIPAPLPVPLPLPVPLPPTPPSPIPAPLPVPLPLPVPLPPTPPSPIPAPLPVPLPLPVPLPPTPPSPIPAPLPVPLPLPVPLPPTPPSPIPAPLPVPLPLPVPLPPTPPSPIPAPLPVPLPLPVPLPP
+>protgpt2_2  len=198
+SLNFLGGLPPLPPPFPPLSPPFPPPFPPLSPPFPPPFPPPPFPPPFPPLSPPFPPPFPPLSPPFPPPFPPPFPPPFPPPFPPPFPPPFPPPFPPPFPPPFPPPFPPPFPPPFPPPFPPPFPPPFPPPFPPPFPPPFPPPFPPPFPPPFPPPFPPPFPPPFPPPFPPPFPPPFPPPFPPPFPPPFPPPFPPPFPPPFPP
+>protgpt2_3  len=26
+SLNFLGGLPPLWGFLWLIPCLWLVPW
+>protgpt2_4  len=51
+SLNFLGGLPPLKKLDLWGNQLSGTIPSSLSNLSKLEVLDLSYNNLSGKIPD

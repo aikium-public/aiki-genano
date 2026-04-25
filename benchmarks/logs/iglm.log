@@ -1,0 +1,20 @@
+[iglm] importing...
+/home/venkatesh/HBG/scripts/GeNano/benchmark/.venv-bench/lib/python3.12/site-packages/transformers/tokenization_utils_base.py:1601: FutureWarning: `clean_up_tokenization_spaces` was not set. It will be set to `True` by default. This behavior will be depracted in transformers v4.45, and will be then set to `False` by default. For more details check this issue: https://github.com/huggingface/transformers/issues/31884
+  warnings.warn(
+[iglm] loaded in 1.0s
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:01<00:00,  1.24s/it]100%|██████████| 1/1 [00:01<00:00,  1.24s/it]
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  2.15it/s]100%|██████████| 1/1 [00:00<00:00,  2.15it/s]
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  1.90it/s]100%|██████████| 1/1 [00:00<00:00,  1.90it/s]
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  1.62it/s]100%|██████████| 1/1 [00:00<00:00,  1.62it/s]
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  1.99it/s]100%|██████████| 1/1 [00:00<00:00,  1.99it/s]
+[iglm] 5 seqs in 3.4s
+>iglm_0  len=117
+VQLVESGGGLVQPGGSLRLSCAASGFTFSSYAMSWVRQAPGKGLEWVSGINSGGGSTHYADSVKGRFTISRDNAKNTLYLQMNSLKSEDTALYYCATSWLDYAGYNYWGQGTQVTVS
+>iglm_1  len=120
+QLVESGGGSVQAGGSLRLSCAASGYTYSSYCMGWFRQAPGKEREGVAAIDSDGSTTYADSVKGRFTVSQDNAKNTLYLQMNSLKPEDTAMYYCAAVAGCHRLSDFSGFTVWGQGTQVTVS
+>iglm_2  len=121
+VQLVESGGGSVQAGGSLRLSCAASGYTYSSACMGWFRQAPGKEREGVAAIYTDGGRTYYADSVKGRFTISQDSAKNTLYLQMNSLKPEDTAMYYCAADLYRECPPRALYTYWGQGTQVTVS
+>iglm_3  len=121
+HVQLVESGGGSVQAGGSLRLSCAASGYTYSSYCMGWFRQAPGKEREGVAAINTGGGRTYYADSVKGRFTISQDNAKNTVYLQMNSLKPEDTAMYYCAADPDCGSSLPMNYWGQGTQVTVSS
+>iglm_4  len=124
+VQLVESGGGSVQAGGSLRLSCVASGYTYNRNCMAWFRQAPGKEREGVARIATGSGNTYYADSVKGRFTISQDNAKNTVYLQMNSLKPEDTAMYYCAAGWTLGSYCSGAWSSYSYWGQGTQVTVS

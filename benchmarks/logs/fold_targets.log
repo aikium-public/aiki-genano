@@ -1,0 +1,6 @@
+/home/venkatesh/HBG/scripts/GeNano/benchmark/.venv-bench/lib/python3.12/site-packages/transformers/tokenization_utils_base.py:1601: FutureWarning: `clean_up_tokenization_spaces` was not set. It will be set to `True` by default. This behavior will be depracted in transformers v4.45, and will be then set to `False` by default. For more details check this issue: https://github.com/huggingface/transformers/issues/31884
+  warnings.warn(
+Some weights of EsmForProteinFolding were not initialized from the model checkpoint at facebook/esmfold_v1 and are newly initialized: ['esm.contact_head.regression.bias', 'esm.contact_head.regression.weight']
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+[esmfold] test_peptide_01: 11 AA  1.4s  peak=8.53 GB  plddt=0.57  -> benchmark_out/esmfold/test_peptide_01.pdb
+[esmfold] test_peptide_02: 23 AA  1.3s  peak=8.54 GB  plddt=0.77  -> benchmark_out/esmfold/test_peptide_02.pdb

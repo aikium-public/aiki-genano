@@ -1,0 +1,46 @@
+name: smoke_sft
+
+# Smoke-test SFT config: 10 steps, batch 1, no eval. Trains against the
+# Zenodo subset (training_subset/ mounted at /app/data/training_subset/).
+# Purpose: verify that the SFT pipeline builds the model, tokenises, runs
+# 10 optimiser steps, and writes a checkpoint. Not for training quality.
+
+sft:
+  lora_targets: ['c_attn', 'c_proj', 'c_fc']
+
+  script_args:
+    base_model_name: nferruz/ProtGPT2
+    new_model_name: smoke-sft
+    response_sft_stage: true
+    data_split_dir: /app/data/training_subset
+    streaming: false
+    shuffle_buffer: 256
+    packing: false
+    lora_r: 8
+    lora_alpha: 16
+    lora_dropout: 0.05
+
+  training_args:
+    max_seq_length: 512
+    output_dir: /app/output/smoke/sft
+    max_steps: 10
+    warmup_steps: 0
+    per_device_train_batch_size: 1
+    per_device_eval_batch_size: 1
+    gradient_accumulation_steps: 1
+    eval_steps: 1000000   # never within 10 steps
+    save_steps: 10
+    save_total_limit: 1
+    load_best_model_at_end: false
+    logging_dir: /app/output/smoke/sft/logs
+    logging_steps: 1
+    evaluation_strategy: "no"
+    save_strategy: steps
+    report_to: none
+    log_freq: 1
+    learning_rate: 1e-4
+    lr_scheduler_type: linear
+    weight_decay: 0.0
+    max_grad_norm: 1.0
+    find_unused_parameters: false
+    gradient_checkpointing: false

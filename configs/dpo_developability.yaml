@@ -1,0 +1,76 @@
+name: yotta10k_v1_dpo_developability_len126
+
+# ==============================================================================
+# DPO: Yotta10k Nb-v1 developability dataset (binder length = 126)
+#
+# This config assumes you start DPO from the *merged* SFT model directory:
+#   /app/output/results/.../100k_len126_sft/NanoBody-design-sft-response-only-100k-len126-r64
+#
+# Dataset directory must contain:
+#   - training.csv (columns: peptide, protein, decoy)
+#   - testing.csv  (columns: peptide, protein, decoy)
+#
+# NOTE on versions:
+#   Use TRL 0.11.4 + transformers 4.45.2 (transformers 4.46+ conflicts with TRL's DPOTrainer).
+# ==============================================================================
+
+dpo:
+  lora_targets: ['c_attn', 'c_proj', 'c_fc', 'lm_head', 'wte', 'wpe']
+
+  script_args:
+    # Start from merged SFT model (peptide -> protein direction)
+    sft_model_path: /app/checkpoints/SFT
+    new_model_name: NanoBody-design-dpo-yotta10k-v1-dev
+
+    # 5% held-out split created at:
+    #   /app/data/{training,testing}.csv
+    data_split_dir: /app/data
+
+    beta: 0.5
+    lora_alpha: 64
+    lora_dropout: 0.05
+    lora_r: 32
+
+    # SAFE LENGTHS (token-based):
+    # - protect the 126-AA binder completion from truncation
+    # - allow long variable-length targets, up to the model context window (1024)
+    max_prompt_length: 832   # 1024 - max_target_length
+    max_target_length: 192
+    max_length: 1024
+
+    filter_to_max_length: true
+    ignore_bias_buffers: false
+
+  training_args:
+    output_dir: /app/checkpoints/DPO
+    resume_from_checkpoint: null
+
+    # Training schedule (increase as needed)
+    max_steps: 6000
+    save_steps: 200
+    eval_steps: 200
+    num_train_epochs: 1
+
+    learning_rate: 5e-5
+    per_device_train_batch_size: 6
+    per_device_eval_batch_size: 4
+    warmup_steps: 100
+
+    # Logging
+    logging_dir: /app/output/logs/NanoBody-design_dpo_yotta10k_v1_dev
+    logging_steps: 10
+    evaluation_strategy: steps
+    load_best_model_at_end: true
+    save_strategy: steps
+    metric_for_best_model: eval_loss
+    save_total_limit: 10
+    gradient_accumulation_steps: 4
+    # Match SFT-style live curves (requires WANDB_API_KEY in the container env)
+    report_to: wandb
+
+    lr_scheduler_type: cosine
+    weight_decay: 0.05
+    optimizer_type: paged_adamw_32bit
+    gradient_checkpointing: false
+    log_freq: 1
+

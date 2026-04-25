@@ -1,0 +1,61 @@
+name: smoke_gdpo
+
+# Smoke-test GDPO config: 10 steps, 4 rollouts per prompt. Uses the SFT
+# smoke checkpoint as both reference and policy initialisation. Verifies
+# the GDPO trainer + reward functions wire end-to-end.
+
+gdpo:
+  lora_targets: ['c_attn', 'c_proj', 'c_fc']
+
+  script_args:
+    sft_model_path: /app/output/smoke/sft/checkpoint-10
+    base_model_name: nferruz/ProtGPT2
+    new_model_name: smoke-gdpo
+    merge_adapter: false
+    data_split_dir: /app/data/training_subset
+    lora_r: 8
+    lora_alpha: 16
+    lora_dropout: 0.05
+    num_generations: 4
+    max_completion_length: 60
+    temperature: 0.9
+    top_p: 0.92
+    top_k: 0
+    beta: 1.0e-3
+    reward_weights: [0.15, 0.20, 0.25, 0.15, 0.15, 0.10]
+    subset_seed: 42
+    max_train_samples: 32
+    max_eval_samples: 4
+    max_unique_peptides_train: 4
+    samples_per_peptide_train: 8
+    max_unique_peptides_eval: 2
+    samples_per_peptide_eval: 2
+
+  training_args:
+    output_dir: /app/output/smoke/gdpo
+    overwrite_output_dir: false
+    resume_from_checkpoint: false
+    max_steps: 10
+    per_device_train_batch_size: 2
+    per_device_eval_batch_size: 2
+    gradient_accumulation_steps: 1
+    learning_rate: 1.0e-5
+    warmup_steps: 0
+    lr_scheduler_type: linear
+    weight_decay: 0.0
+    optim: paged_adamw_32bit
+    logging_steps: 1
+    report_to: none
+    run_name: smoke_gdpo
+    save_steps: 10
+    save_total_limit: 1
+    eval_strategy: "no"
+    gradient_checkpointing: false
+    bf16: false
+    fp16: false
+    max_grad_norm: 1.0
+    epsilon: 0.1
+    epsilon_high: 0.1
+    loss_type: bnpo
+    disable_dropout: true
+    seed: 42
