@@ -7,8 +7,11 @@ set -u
 cd "$(dirname "$0")"
 
 PY=python
-TARGETS=./data/2026_04_23__genano__targets.csv
-OUT=./data/generated_2026_04_24
+# Targets CSV: caller-supplied. The internal Aikium screening targets CSV is
+# not redistributed; supply your own (uniprot,target_name,peptide CSV) via
+# the TARGETS env var or the script will exit with a clear message.
+TARGETS=${TARGETS:-./data/targets.csv}
+OUT=${OUT:-./data/benchmark_run}
 N=${N:-100}
 T=${T:-0.7}
 SEED=${SEED:-42}

@@ -13,7 +13,7 @@ Metric groups:
   6. Secondary structure fractions
 
 Usage (inside Docker):
-    python -m src.binder_design.protgpt2_dpo.analysis.profile \
+    python -m aiki_genano.evaluation.profile \
         --csv /app/output/csv/SFT_20k.csv
 """
 from __future__ import annotations

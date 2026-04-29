@@ -9,13 +9,13 @@ Writes: same file in-place (adds netsolp_solubility, netsolp_usability)
 
 Usage (inside Docker):
     # All 4 models, seed=42, temp=0.7
-    python -m src.binder_design.protgpt2_dpo.analysis.run_properties_netsolp
+    python -m aiki_genano.evaluation.run_properties_netsolp
 
     # Single model
-    python -m src.binder_design.protgpt2_dpo.analysis.run_properties_netsolp --model SFT
+    python -m aiki_genano.evaluation.run_properties_netsolp --model SFT
 
     # Different seed/temp
-    python -m src.binder_design.protgpt2_dpo.analysis.run_properties_netsolp --seed 123 --temp 0.9
+    python -m aiki_genano.evaluation.run_properties_netsolp --seed 123 --temp 0.9
 """
 from __future__ import annotations
 

@@ -10,7 +10,7 @@ We pass individual property rewards (not pre-combined TDS/MFS) so GDPO
 can do proper per-reward normalization.
 
 Run with:
-    python -m src.binder_design.protgpt2_dpo.gdpo --config-path=conf --config-name=config_gdpo
+    python -m aiki_genano.training.gdpo --config-path=conf --config-name=config_gdpo
 """
 
 import logging

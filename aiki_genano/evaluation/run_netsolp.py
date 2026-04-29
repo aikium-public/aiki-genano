@@ -6,7 +6,7 @@ predictions back into the original CSVs.
 
 Usage (inside Docker):
     pip install onnxruntime fair-esm
-    python -m src.binder_design.protgpt2_dpo.analysis.run_netsolp
+    python -m aiki_genano.evaluation.run_netsolp
 """
 from __future__ import annotations
 

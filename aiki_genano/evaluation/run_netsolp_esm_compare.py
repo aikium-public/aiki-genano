@@ -7,13 +7,13 @@ Compare ESM12 vs ESM1b NetSolP predictions on the original ~640-seq profiled CSV
 - Prints a side-by-side comparison table
 
 Usage (inside Docker):
-    python -m src.binder_design.protgpt2_dpo.analysis.run_netsolp_esm_compare
+    python -m aiki_genano.evaluation.run_netsolp_esm_compare
 
     # Skip re-running ESM1b if already done:
-    python -m src.binder_design.protgpt2_dpo.analysis.run_netsolp_esm_compare --no-rerun
+    python -m aiki_genano.evaluation.run_netsolp_esm_compare --no-rerun
 
     # Run only ESM1b for specific model:
-    python -m src.binder_design.protgpt2_dpo.analysis.run_netsolp_esm_compare --model SFT
+    python -m aiki_genano.evaluation.run_netsolp_esm_compare --model SFT
 """
 from __future__ import annotations
 

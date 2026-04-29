@@ -5,7 +5,7 @@ Pipeline: sequences → ESM-2 650M embeddings → TEMPRO Keras model → Tm pred
 
 Usage (inside Docker):
     pip install tensorflow fair-esm
-    python -m src.binder_design.protgpt2_dpo.analysis.run_tempro
+    python -m aiki_genano.evaluation.run_tempro
 """
 from __future__ import annotations
 

@@ -1,7 +1,10 @@
 name: smoke_sft
 
-# Smoke-test SFT config: 10 steps, batch 1, no eval. Trains against the
-# Zenodo subset (training_subset/ mounted at /app/data/training_subset/).
+# Smoke-test SFT config: 10 steps, batch 1, no eval. Trains against a
+# user-supplied training set mounted at /app/data/training_subset/ (CSV
+# with columns peptide, protein per data_utils.py). The Aikium screening
+# corpus is not redistributed; supply your own pairs or request access
+# via partnerships@aikium.com under NDA.
 # Purpose: verify that the SFT pipeline builds the model, tokenises, runs
 # 10 optimiser steps, and writes a checkpoint. Not for training quality.
 

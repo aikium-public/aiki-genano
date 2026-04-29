@@ -115,8 +115,8 @@ def load_model_from_checkpoint(checkpoint_path, device="cuda"):
         print("   Type: LoRA adapter (loading base + adapter)")
 
         # adapter_config.json's base_model_name_or_path was recorded at training
-        # time on a path that no longer exists in the released bundle (it was
-        # /workspace/results/aikium/.../NanoBody-design-sft-...). Resolve here:
+        # time on an absolute filesystem path that no longer exists in the
+        # released bundle. Resolve here:
         #   1. If it's an existing path → use as-is.
         #   2. If it's a valid HF repo id (no leading /) → use as-is.
         #   3. If it's a stale absolute path: keep the basename and look for

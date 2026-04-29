@@ -14,10 +14,10 @@ Outputs (inside statistical/{model}/):
   • {model}_summary.csv                   — per-run aggregated means
 
 Usage (inside Docker):
-    python -m src.binder_design.protgpt2_dpo.analysis.run_properties --model SFT
-    python -m src.binder_design.protgpt2_dpo.analysis.run_properties --model DPO
-    python -m src.binder_design.protgpt2_dpo.analysis.run_properties --model GDPO
-    python -m src.binder_design.protgpt2_dpo.analysis.run_properties --model all
+    python -m aiki_genano.evaluation.run_properties --model SFT
+    python -m aiki_genano.evaluation.run_properties --model DPO
+    python -m aiki_genano.evaluation.run_properties --model GDPO
+    python -m aiki_genano.evaluation.run_properties --model all
 """
 from __future__ import annotations
 

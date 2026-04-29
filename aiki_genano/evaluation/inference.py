@@ -14,7 +14,7 @@ OUTPUT_DIR/
     summary.csv                       ← one-row-per-model overview
 
 Usage (inside Docker):
-    python -m src.binder_design.protgpt2_dpo.analysis.inference
+    python -m aiki_genano.evaluation.inference
 """
 from __future__ import annotations
 

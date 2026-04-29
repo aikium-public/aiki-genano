@@ -7,9 +7,9 @@ against the pre-built training sequence database.
 #   pip install tqdm
 
 Usage (inside Docker):
-    python -m src.binder_design.protgpt2_dpo.analysis.run_blast_check
-    python -m src.binder_design.protgpt2_dpo.analysis.run_blast_check --seed 42 --temp 0.7
-    python -m src.binder_design.protgpt2_dpo.analysis.run_blast_check --models SFT DPO GDPO
+    python -m aiki_genano.analysis.run_blast_check
+    python -m aiki_genano.analysis.run_blast_check --seed 42 --temp 0.7
+    python -m aiki_genano.analysis.run_blast_check --models SFT DPO GDPO
 """
 from __future__ import annotations
 
@@ -52,7 +52,7 @@ def _verify_db() -> None:
         raise FileNotFoundError(
             f"BLAST database not found or incomplete at {DB_PATH}. Missing: {missing}\n"
             "Build it first:\n"
-            "  python -m src.binder_design.protgpt2_dpo.analysis.blast_novelty "
+            "  python -m aiki_genano.analysis.blast_novelty "
             "--build-db --train-csv /app/data/training.csv"
         )
     print(f"BLAST DB: {DB_PATH}  ✓")

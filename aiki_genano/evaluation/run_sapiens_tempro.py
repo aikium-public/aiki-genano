@@ -3,7 +3,7 @@ Run Sapiens humanness + TEMPRO Tm prediction on generated nanobody CSVs.
 
 Usage (inside Docker):
     pip install sapiens
-    python -m src.binder_design.protgpt2_dpo.analysis.run_sapiens_tempro
+    python -m aiki_genano.evaluation.run_sapiens_tempro
 """
 from __future__ import annotations
 

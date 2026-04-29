@@ -13,22 +13,22 @@ Single image for sequence generation, property prediction, and re-training. Repl
 
 | Path | Contents | Required for |
 |---|---|---|
-| `/app/checkpoints` | Four trained checkpoints (SFT, DPO, GDPO_DPO, GDPO_SFT) downloaded from Zenodo via `scripts/download_checkpoints.sh`. | `generate`, `predict` |
-| `/app/data` | `training_subset/` and `generated_sequences/` from the Zenodo deposit. | `train`, `predict --recompute` |
+| `/app/checkpoints` | Four trained checkpoints (SFT, DPO, GDPO_DPO, GDPO_SFT). NDA-gated; request via `partnerships@aikium.com`. | `generate`, `predict` |
+| `/app/data` | User-supplied training data and/or sequence CSVs. The Aikium screening corpus and the generated-sequence amino-acid strings are not redistributed (figure-data tables only are available at the Zenodo deposit, [10.5281/zenodo.19757842](https://doi.org/10.5281/zenodo.19757842)). | `train`, `predict --recompute` |
 | `/app/output` | User-writable output directory for predictions and generated FASTAs. | `generate`, `predict` |
 | `/models` | HuggingFace cache (ProtGPT2, Sapiens, NetSolP-ESM weights). Persist across runs by mounting a named volume. | `predict --with-properties`, first `generate` run |
 
 ## Quickstart
 
-### 1. Pull checkpoints from Zenodo (one time, ~3.4 GB)
+### 1. Obtain the trained checkpoints (NDA)
 
 ```bash
 git clone https://github.com/aikium-public/aiki-genano.git
 cd aiki-genano
-bash scripts/download_checkpoints.sh           # populates ./checkpoints/{SFT,DPO,GDPO_DPO,GDPO_SFT}
+# Place ./checkpoints/{SFT,DPO,GDPO_DPO,GDPO_SFT}/ once you have access.
 ```
 
-The downloader is sha256-verified against `scripts/zenodo_manifest.json` and refuses to silently accept a corrupted file or a DOI that drifted from the manifest.
+The four trained checkpoints (SFT merged + DPO/GDPO_DPO/GDPO_SFT LoRA adapters, ~3.4 GB combined) are NDA-gated; request access via `partnerships@aikium.com`. Without local checkpoints, use the Modal demo at [https://aikium--aiki-genano-fastapi-app.modal.run](https://aikium--aiki-genano-fastapi-app.modal.run).
 
 ### 2. Generate nanobody candidates for an epitope (GPU)
 

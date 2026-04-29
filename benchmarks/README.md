@@ -51,7 +51,7 @@ python generators/test_iggm.py            # needs antigen PDB from ESMFold prefo
 
 ## Targets
 
-`targets.fasta` carries two test peptides used for smoke runs (`SLNFLGGLPPL`, an HIV-gp120-like 11mer, and `DIQMTQSPSSLSASVGDRVTITC`, a kappa FR1 fragment). Replace with your own epitope list for a full comparison run. The 10-target subset used in the mAbs (submitted) paper is in the Zenodo deposit (`training_subset/targets.csv`).
+`targets.fasta` carries two test peptides used for smoke runs (`SLNFLGGLPPL`, an HIV-gp120-like 11mer, and `DIQMTQSPSSLSASVGDRVTITC`, a kappa FR1 fragment). Replace with your own epitope list for a full comparison run. The 10 representative GPCR target identifiers used in the mAbs (submitted) paper are in the Zenodo deposit at `targets_keys.csv`; the corresponding peptide-window sequences are not redistributed and are available via `partnerships@aikium.com` under NDA.
 
 ## ESMFold prefold + IgGM pipeline
 

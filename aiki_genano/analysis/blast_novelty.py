@@ -8,15 +8,15 @@ Workflow:
 
 Usage (inside Docker):
     # Build DB once (already done):
-    python -m src.binder_design.protgpt2_dpo.analysis.blast_novelty \
+    python -m aiki_genano.evaluation.blast_novelty \
         --build-db --train-csv /app/data/training.csv
 
     # Query a profiled CSV (valid + unique only, with novelty stats):
-    python -m src.binder_design.protgpt2_dpo.analysis.blast_novelty \
+    python -m aiki_genano.evaluation.blast_novelty \
         --query-csv /app/output/statistical/SFT/properties/SFT_seed42_temp0.7_profiled.csv
 
     # Query all CSVs for a model:
-    python -m src.binder_design.protgpt2_dpo.analysis.blast_novelty --model SFT
+    python -m aiki_genano.evaluation.blast_novelty --model SFT
 """
 from __future__ import annotations
 

@@ -27,6 +27,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -96,8 +97,12 @@ def main() -> None:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--tool", required=True, help="Tool name; must match header's tool field")
     p.add_argument("--fasta", required=True, type=Path)
+    # Targets CSV expected at $AIKI_TARGETS_CSV (default: benchmarks/targets.fasta
+    # converted to CSV form by the caller). The internal Aikium screening targets
+    # CSV is not redistributed.
     p.add_argument("--targets", type=Path,
-                   default=REPO / "data/2026_04_23__genano__targets.csv")
+                   default=Path(os.environ.get("AIKI_TARGETS_CSV",
+                                               REPO / "benchmarks/targets.csv")))
     p.add_argument("--out", required=True, type=Path)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--temperature", type=float, default=0.7)
