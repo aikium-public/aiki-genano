@@ -53,6 +53,15 @@ wandb/
 !/data/umap_cache/
 /data/umap_cache/embeddings.npz
 /data/umap_cache/metadata.csv
+/data/umap_cache/*.local-backup
+/data/umap_cache/*.bak
+
+# Personal scratch artefacts that shouldn't be tracked
+/Aikium_Inc_LOGO.png
+/Screenshot*.png
+*.local-backup
+*_old.pdf
+/paper/2026_*_*__*.pdf
 
 # IP-bearing intermediate artefacts. Any file with both `peptide` and
 # `generated_sequence` columns leaks Aikium's screening corpus and must

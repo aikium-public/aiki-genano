@@ -1,6 +1,6 @@
 # Paper-number reproduction
 
-**Source data (canonical):** `gs://gennano-gdpo-models/data/statistical/statistical/{MODEL}/properties/{MODEL}_seed42_temp0.7_profiled.csv` for `MODEL ∈ {SFT, DPO, GDPO, GDPO_SFT}`, downloaded 2026-04-24 12:25 PDT. All 67 columns present, including `netsolp_solubility`.
+**Source data (canonical):** `$AIKI_DATA_DIR/{MODEL}/properties/{MODEL}_seed42_temp0.7_profiled.csv` for `MODEL ∈ {SFT, DPO, GDPO, GDPO_SFT}`, snapshot from 2026-04-24 12:25 PDT. All 67 columns present, including `netsolp_solubility`. The aggregated values in this table are reproduced in the Zenodo deposit's `figure_data/full_screen_aggregates.csv` ([10.5281/zenodo.19757842](https://doi.org/10.5281/zenodo.19757842)).
 **Filter:** `is_valid_126 == True` (files are already pre-filtered to seed==42, temp==0.7 by filename).
 **Per-model N after filter:** SFT 6,398 · DPO 5,998 · GDPO 6,386 · GDPO_SFT 6,399.
 

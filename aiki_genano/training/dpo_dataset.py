@@ -1,7 +1,7 @@
 """
-Utilities for the Yotta Nb-v1 DPO developability dataset.
+Utilities for the NBv1 DPO developability dataset.
 
-This repo's DPO loader (`src/binder_design/protgpt2_dpo/data_utils.py`) expects a directory with:
+The DPO loader (`aiki_genano.training.data_utils`) expects a directory with:
   - training.csv
   - testing.csv
 

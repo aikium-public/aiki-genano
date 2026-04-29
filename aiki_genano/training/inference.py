@@ -3,7 +3,7 @@ Inference script for NanoBody generation.
 Generates protein binders given peptide inputs using trained SFT checkpoints.
 
 Usage:
-    python src/binder_design/protgpt2_dpo/inference.py \
+    python -m aiki_genano.training.inference \
         --checkpoint_1 /path/to/checkpoint-1000 \
         --checkpoint_2 /path/to/checkpoint-4000 \
         --test_csv data/testing.csv \

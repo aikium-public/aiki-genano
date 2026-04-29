@@ -15,7 +15,16 @@ SEED=${SEED:-42}
 STOP_ON_ERROR=${STOP_ON_ERROR:-0}
 
 export HF_HUB_DISABLE_TELEMETRY=1
-export HF_TOKEN=${HF_TOKEN:-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}
+# HF_TOKEN must be exported by the caller. Required by the gated NanoAbLLaMA
+# (Lab608/NanoAbLLaMA) and PepMLM checkpoints. Get one at
+#   https://huggingface.co/settings/tokens
+# A token that previously lived literally in this file was revoked on
+# 2026-04-28 after a public-repo audit; do not reintroduce a literal here.
+if [ -z "${HF_TOKEN:-}" ]; then
+    echo "[orch] ERROR: HF_TOKEN not set in environment." >&2
+    echo "       export HF_TOKEN=hf_xxx (your own token from huggingface.co)." >&2
+    exit 2
+fi
 
 mkdir -p "$OUT/logs"
 

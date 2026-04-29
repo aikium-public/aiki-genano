@@ -1,17 +1,17 @@
-/home/venkatesh/HBG/scripts/GeNano/benchmark/.venv-bench/lib/python3.12/site-packages/esm/pretrained.py:70: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+<env>/lib/python3.12/site-packages/esm/pretrained.py:70: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
   model_data = torch.load(str(model_location), map_location="cpu")
-/home/venkatesh/HBG/scripts/GeNano/benchmark/.venv-bench/lib/python3.12/site-packages/esm/pretrained.py:215: UserWarning: Regression weights not found, predicting contacts will not produce correct results.
+<env>/lib/python3.12/site-packages/esm/pretrained.py:215: UserWarning: Regression weights not found, predicting contacts will not produce correct results.
   warnings.warn(
 Running on GPU
 Traceback (most recent call last):
-  File "/home/venkatesh/HBG/scripts/GeNano/benchmark/tools/protein-dpo/sample.py", line 91, in <module>
+  File "<repo>/benchmark/tools/protein-dpo/sample.py", line 91, in <module>
     sample_seq_singlechain(model, alphabet, args)
-  File "/home/venkatesh/HBG/scripts/GeNano/benchmark/tools/protein-dpo/sample.py", line 11, in sample_seq_singlechain
+  File "<repo>/benchmark/tools/protein-dpo/sample.py", line 11, in sample_seq_singlechain
     coords, seq = esm.inverse_folding.util.load_coords(args.pdbfile, args.chain)
                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/venkatesh/HBG/scripts/GeNano/benchmark/.venv-bench/lib/python3.12/site-packages/esm/inverse_folding/util.py", line 87, in load_coords
+  File "<env>/lib/python3.12/site-packages/esm/inverse_folding/util.py", line 87, in load_coords
     structure = load_structure(fpath, chain)
                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/venkatesh/HBG/scripts/GeNano/benchmark/.venv-bench/lib/python3.12/site-packages/esm/inverse_folding/util.py", line 56, in load_structure
+  File "<env>/lib/python3.12/site-packages/esm/inverse_folding/util.py", line 56, in load_structure
     raise ValueError(f'Chain {chain} not found in input file')
 ValueError: Chain B not found in input file

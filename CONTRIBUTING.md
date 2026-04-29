@@ -23,12 +23,13 @@ pip install -e .[evaluation]
 python -m aiki_genano.cli smoke --offline       # ~1 minute, no network, no GPU
 ```
 
-For end-to-end testing with real checkpoints:
+For end-to-end testing with real checkpoints, the four trained checkpoints (~3.4 GB combined: SFT merged + DPO / GDPO\_DPO / GDPO\_SFT LoRA adapters) are NDA-gated; request access from `partnerships@aikium.com` and place them under `./checkpoints/{SFT,DPO,GDPO_DPO,GDPO_SFT}/`. Then:
 
 ```bash
-bash scripts/download_checkpoints.sh             # ~3.4 GB from Zenodo, sha256-verified
 bash scripts/docker_smoke_test.sh --real --gpu   # ~10 minutes including model load
 ```
+
+Without local checkpoints, the offline smoke test above is sufficient for validating bug-fix PRs.
 
 ## Code style
 
