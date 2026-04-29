@@ -64,16 +64,19 @@ class GenerateRequest(BaseModel):
     # silently clamped to 10 inside the handler (see api_generate). Landing
     # assumes batches of 10 for the alignment grid and 5x2 card layout;
     # the cap also bounds the per-IP surrogate-extraction calculus.
+    # n_candidates accepted up to 50 to avoid a 422 at well-meaning callers,
+    # then silently clamped to [1, 10] inside the handler. Landing assumes
+    # batches of 10 for the alignment grid + 5x2 card layout; the cap also
+    # bounds the per-IP surrogate-extraction calculus.
     n_candidates: int = Field(10, ge=1, le=50)
-    # Sampling temperature is constrained to the range evaluated in the paper
-    # ([0.7, 1.5]; the paper specifically reports 0.7, 0.9, 1.2). Below 0.7 an
+    # Temperature and top_p accept the full plausible range so we never 422
+    # the user; the handler silently clamps them to the paper-evaluated
+    # window (T in [0.7, 1.5]; top_p in [0.85, 1.0]). Below those floors an
     # autoregressive LM concentrates probability mass on near-training-set
     # sequences, which would let an adversary partially reconstruct training
-    # binders by querying the demo at low T with paper-disclosed epitopes.
-    temperature: float = Field(0.7, ge=0.7, le=1.5)
-    # Same logic for nucleus sampling: very small top_p collapses the
-    # candidate set to high-probability (i.e. training-resembling) tokens.
-    top_p: float = Field(0.92, ge=0.85, le=1.0)
+    # binders by querying at low T with paper-disclosed epitopes.
+    temperature: float = Field(0.7, gt=0.0, le=2.0)
+    top_p: float = Field(0.92, gt=0.0, le=1.0)
     model: str = Field("GDPO_DPO", pattern="^(SFT|DPO|GDPO_DPO|GDPO_SFT)$")
     seed: int = Field(42, ge=0, le=2**31 - 1)
 
@@ -409,22 +412,33 @@ def fastapi_app():
         rl = _rate_check(_ip(request), "generate")
         if rl is not None:
             return JSONResponse(status_code=429, content=rl)
-        # Silent clamp to 10 — see GenerateRequest. We prefer a quiet truncation
-        # over a 422 so the user never sees a Pydantic-shaped error.
+        # Silent clamp on every numerical knob — see GenerateRequest. Preferring
+        # quiet clamping over 422 so the user never sees a Pydantic-shaped error
+        # for an input the form might plausibly emit.
         n_candidates = min(10, max(1, req.n_candidates))
+        effective_temperature = min(1.5, max(0.7, req.temperature))
+        effective_top_p = min(1.0, max(0.85, req.top_p))
         try:
             rows = generate_remote.remote(
                 epitope=req.epitope.upper(),
                 n_candidates=n_candidates,
-                temperature=req.temperature,
-                top_p=req.top_p,
+                temperature=effective_temperature,
+                top_p=effective_top_p,
                 model_name=req.model,
                 seed=req.seed,
             )
         except Exception as exc:
             raise HTTPException(status_code=500, detail=f"generate failed: {exc}")
-        return {"epitope": req.epitope.upper(), "model": req.model,
-                "n_returned": len(rows), "candidates": rows}
+        return {
+            "epitope": req.epitope.upper(),
+            "model": req.model,
+            "n_returned": len(rows),
+            "effective_temperature": effective_temperature,
+            "effective_top_p": effective_top_p,
+            "n_candidates_requested": req.n_candidates,
+            "n_candidates_used": n_candidates,
+            "candidates": rows,
+        }
 
     # Process-local PDB cache. Atlas folds are deterministic on input
     # sequence, so identical (epitope, linker, binder) submissions can be

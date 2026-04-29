@@ -477,7 +477,7 @@ select.field-input { cursor: pointer; }
       </div>
       <div class="field-row">
         <span class="field-label">Candidates</span>
-        <input type="number" id="n_candidates" class="field-input" value="10" min="1" max="50" style="max-width:120px;">
+        <input type="number" id="n_candidates" class="field-input" value="10" min="1" max="10" style="max-width:120px;" title="Capped at 10. Higher values will be silently clamped to 10 server-side.">
         <span class="field-label" style="min-width: 90px;">Model</span>
         <select id="model" class="field-input" style="max-width:200px;">
           <option value="GDPO_DPO" selected>GDPO (DPO init) — paper</option>
@@ -1186,18 +1186,30 @@ $('generate-btn').addEventListener('click', async () => {
   if (ep.length < 4) { $('status').textContent = 'Enter an epitope of at least 4 amino acids.'; return; }
   const body = {
     epitope: ep,
-    n_candidates: Math.max(1, Math.min(50, parseInt($('n_candidates').value) || 10)),
-    temperature: Math.max(0.3, Math.min(1.5, parseFloat($('temperature').value) || 0.7)),
+    // Client-side clamp matches the server-side silent-clamp in
+    // /api/generate. Browsers don't strictly enforce <input min/max> on typed
+    // input, so we defensively clamp here too.
+    n_candidates: Math.max(1, Math.min(10, parseInt($('n_candidates').value) || 10)),
+    temperature: Math.max(0.7, Math.min(1.5, parseFloat($('temperature').value) || 0.7)),
     top_p: 0.92,
     model: $('model').value,
     seed: 42
   };
+  // Surface any clamping the user might have typed.
+  const rawN = parseInt($('n_candidates').value);
+  const rawT = parseFloat($('temperature').value);
+  const clampNotes = [];
+  if (Number.isFinite(rawN) && rawN !== body.n_candidates) clampNotes.push(`n_candidates ${rawN} → ${body.n_candidates} (max 10)`);
+  if (Number.isFinite(rawT) && Math.abs(rawT - body.temperature) > 1e-9) clampNotes.push(`T ${rawT} → ${body.temperature} (range [0.7, 1.5])`);
   STATE.epitope = ep;
   STATE.model = body.model;
 
   $('generate-btn').disabled = true;
   $('results').style.display = 'none';
-  $('status').textContent = 'Generating… first call after idle takes ~30–60 s for the GPU container to warm.';
+  const baseStatus = 'Generating… first call after idle takes ~30–60 s for the GPU container to warm.';
+  $('status').textContent = clampNotes.length
+    ? `${baseStatus} (clamped: ${clampNotes.join('; ')})`
+    : baseStatus;
   const t0 = performance.now();
 
   try {
@@ -1230,7 +1242,13 @@ $('generate-btn').addEventListener('click', async () => {
     STATE.miniViewers = {};
 
     const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
-    $('results-meta').textContent = `${data.n_returned} candidates · ${data.model} · seed 42 · T ${body.temperature} · ${elapsed}s`;
+    // Prefer server-reported effective values (the server silent-clamps so
+    // an out-of-range request still produces a sane result).
+    const effT = (data.effective_temperature ?? body.temperature).toFixed(2);
+    const reqN = data.n_candidates_requested ?? body.n_candidates;
+    const usedN = data.n_candidates_used ?? data.n_returned;
+    const candTag = (reqN !== usedN) ? `${data.n_returned} of ${reqN} requested (capped at ${usedN})` : `${data.n_returned} candidates`;
+    $('results-meta').textContent = `${candTag} · ${data.model} · seed 42 · T ${effT} · ${elapsed}s`;
     renderTable();
     renderAlignment();
     renderDesignCards();
