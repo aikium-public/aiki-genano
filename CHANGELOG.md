@@ -18,7 +18,7 @@ Initial public release accompanying the mAbs (submitted) paper *"Aiki-GeNano: Mu
 - Six sequence-based GDPO reward functions: FR2 hydrophobicity, hydrophobic-patch coverage, chemical-liability motifs (deamidation/isomerisation/N-glycosylation/oxidation), Wilkinson–Harrison expression probability, VHH FR2 hallmark conservation, and scaffold integrity.
 - Single Docker image at `ghcr.io/aikium-public/aiki-genano:1.0.0` packages the SFT/DPO/GDPO training stack, the six reward functions, and the property-prediction pipeline (TEMPRO, NetSolP, Sapiens).
 - Modal-hosted live demo at <https://aikium--aiki-genano-fastapi-app.modal.run> running the GDPO_DPO checkpoint (`/api/generate`, `/api/score`, `/api/health`).
-- Numerical figure data + per-sequence property profiles (sequences stripped) deposited at Zenodo under CC-BY-NC-4.0: <https://doi.org/10.5281/zenodo.19757843>.
+- Numerical figure data + per-sequence property profiles (sequences stripped) deposited at Zenodo under CC-BY-NC-4.0: <https://doi.org/10.5281/zenodo.19757842>.
 - Trained model checkpoints, the underlying nanobody-screening dataset, and the literal generated nanobody sequences remain proprietary; available from `partnerships@aikium.com` under NDA.
 - Headline numbers vs the supervised baseline across the 65-target screen: predicted mean melting temperature +6.6 °C, deamidation severity reduced, N-glycosylation and CDR methionine-oxidation motif occurrence reduced; predicted humanness and solubility preserved. Generated sequences differ from the nearest training sequence by 8.1–9.0 amino acids out of 126.
 

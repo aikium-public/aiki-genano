@@ -7,7 +7,7 @@ A staged language-model alignment pipeline (SFT → DPO → GDPO) that takes a t
 | | |
 |---|---|
 | Paper (preprint) | bioRxiv (DOI assigned on screening) |
-| Figure data | Zenodo: <https://doi.org/10.5281/zenodo.19757843> (CC-BY-NC-4.0) |
+| Figure data | Zenodo: <https://doi.org/10.5281/zenodo.19757842> (CC-BY-NC-4.0) |
 | Trained checkpoints | available from `partnerships@aikium.com` (NDA) |
 | Docker image | `ghcr.io/aikium-public/aiki-genano:1.0.0` |
 | Live demo | [aiki-genano on Modal](https://aikium--aiki-genano-fastapi-app.modal.run) |
@@ -75,7 +75,7 @@ PyTorch falls back to CPU; expect ~5 minutes per 5 candidates instead of ~5 seco
 
 ## Reproducing paper numbers
 
-The numerical data underlying every figure and table in the paper is deposited at Zenodo ([10.5281/zenodo.19757843](https://doi.org/10.5281/zenodo.19757843), CC-BY-NC-4.0):
+The numerical data underlying every figure and table in the paper is deposited at Zenodo ([10.5281/zenodo.19757842](https://doi.org/10.5281/zenodo.19757842), CC-BY-NC-4.0):
 
 - **`figure_data/`** — per-figure aggregates and per-position derivatives covering all 64 evaluated targets, plus the per-tool head-to-head benchmark table behind Fig 5.
 - **`full_property_tables/`** — per-sequence computed properties (TEMPRO Tm, NetSolP solubility, Sapiens humanness, six GDPO reward scores, motif counts, biophysical descriptors) for the 10 representative GPCR targets disclosed in the paper. Amino-acid sequences are stripped.
@@ -162,8 +162,8 @@ Add a function with signature `f(completions: list[str], **kwargs) -> list[float
                Shastry, Shankar and Mysore, Venkatesh},
   publisher = {Zenodo},
   year      = {2026},
-  doi       = {10.5281/zenodo.19757843},
-  url       = {https://doi.org/10.5281/zenodo.19757843}
+  doi       = {10.5281/zenodo.19757842},
+  url       = {https://doi.org/10.5281/zenodo.19757842}
 }
 ```
 

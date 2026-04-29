@@ -1,6 +1,9 @@
 {
   "_about": "Pointer to the Aiki-GeNano Zenodo deposit accompanying the mAbs (submitted, 2026) paper. The deposit ships only numerical figure data and per-sequence computed property tables (sequences stripped). The four trained model checkpoints (SFT, DPO, GDPO_DPO, GDPO_SFT) and the underlying screening dataset are NOT in the deposit; they are available from partnerships@aikium.com under NDA.",
   "_status": "v1.0.0 — published 2026-04-25",
+  "concept_doi": "10.5281/zenodo.19757842",
+  "concept_url": "https://doi.org/10.5281/zenodo.19757842",
+  "_concept_vs_record": "concept_* always resolves to the latest version on Zenodo and is the DOI to cite from bioRxiv / the journal. record_* pins the specific deposit version evaluated in the paper.",
   "record_doi": "10.5281/zenodo.19757843",
   "record_url": "https://doi.org/10.5281/zenodo.19757843",
   "license": "CC-BY-NC-4.0",
