@@ -201,6 +201,28 @@ select.field-input { cursor: pointer; }
 .score-cell.bad  { background: rgba(255,157,138,0.18); color: var(--burgundy); }
 .score-cell.composite { font-weight: 800; min-width: 48px; padding: 2px 9px; box-shadow: inset 0 0 0 1px rgba(201,169,97,0.45); letter-spacing: 0.02em; }
 
+/* Always-visible reward-key strip above the properties table. */
+.rewards-key {
+  margin: 14px 0 18px; padding: 14px 18px;
+  border: 1px solid rgba(201,169,97,0.20); border-left: 3px solid var(--primary-gold);
+  border-radius: 8px;
+  background: rgba(15,15,15,0.55);
+  font-size: 0.86rem; line-height: 1.5; color: var(--alabaster);
+}
+.rewards-key .rk-title { color: var(--champagne); font-weight: 700; margin-bottom: 8px; font-family: 'Playfair Display', serif; font-size: 0.95rem; }
+.rewards-key .rk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 22px; margin-bottom: 8px; }
+@media (max-width: 760px) { .rewards-key .rk-grid { grid-template-columns: 1fr; } }
+.rewards-key .rk-tag {
+  display: inline-block; min-width: 22px; padding: 1px 6px; margin-right: 4px;
+  border-radius: 4px; background: rgba(201,169,97,0.18); color: var(--primary-gold);
+  font-family: 'JetBrains Mono', monospace; font-size: 0.78em; font-weight: 700; text-align: center;
+}
+.rewards-key strong { color: var(--pearl); }
+.rewards-key em { color: var(--dove-grey); font-style: normal; font-size: 0.86em; }
+.rewards-key .rk-formula { padding-top: 8px; border-top: 1px solid rgba(201,169,97,0.14); font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--dove-grey); }
+.rewards-key .rk-formula strong { color: var(--primary-gold); font-family: inherit; }
+.rewards-key code { background: rgba(0,0,0,0.45); padding: 1px 5px; border-radius: 3px; color: var(--champagne); font-size: 0.86em; }
+
 /* ============== ALIGNMENT ============== */
 .alignment-wrap {
   margin-top: 16px; border: 1px solid rgba(201,169,97,0.18); border-radius: 8px;
@@ -498,6 +520,20 @@ select.field-input { cursor: pointer; }
     <div id="results" style="display:none;">
       <div class="results-meta" id="results-meta"></div>
 
+      <!-- Rewards reference strip — visible without needing to open the glossary -->
+      <div class="rewards-key">
+        <div class="rk-title">The six GDPO reward signals (each in [0, 1]; ↑ better):</div>
+        <div class="rk-grid">
+          <div><span class="rk-tag">r1</span> <strong>FR2 hydropathy</strong> — Kyte–Doolittle aggregation risk over framework-2 (positions 36–53). <em>Weight 0.15.</em></div>
+          <div><span class="rk-tag">r2</span> <strong>Hydrophobic-patch</strong> — penalises consecutive hydrophobic stretches that drive aggregation. <em>Weight 0.20.</em></div>
+          <div><span class="rk-tag">r3</span> <strong>Chemical liability</strong> — deamidation (NG/NS/NT/NN), isomerization (DG/DS/DT/DH), N-glycosylation, CDR-Met oxidation. <em>Weight 0.25.</em></div>
+          <div><span class="rk-tag">r4</span> <strong>Expression</strong> — Wilkinson–Harrison <em>E. coli</em> soluble-expression probability. <em>Weight 0.15.</em></div>
+          <div><span class="rk-tag">r5</span> <strong>VHH hallmark</strong> — Kabat-position FR2 tetrad characteristic of camelid heavy-chain antibodies (Muyldermans 2013). <em>Weight 0.15.</em></div>
+          <div><span class="rk-tag">r6</span> <strong>Scaffold integrity</strong> — length + cysteine count + C-terminal linker; the only ungated reward, defines validity. <em>Weight 0.10.</em></div>
+        </div>
+        <div class="rk-formula"><strong>Composite</strong> = 0.15·r1 + 0.20·r2 + 0.25·r3 + 0.15·r4 + 0.15·r5 + 0.10·r6 (weights from <code>configs/gdpo/final_sft_gdpo_gated.yaml</code>).</div>
+      </div>
+
       <!-- Properties table -->
       <div style="overflow-x:auto;">
         <table class="results-table" id="results-table">
@@ -505,8 +541,12 @@ select.field-input { cursor: pointer; }
             <tr>
               <th>rank</th><th>Sequence</th><th>Valid</th>
               <th title="Weighted composite reward: the exact objective GDPO was trained to maximise (Σ wᵢ·rᵢ; weights 0.15/0.20/0.25/0.15/0.15/0.10)">composite ↑</th>
-              <th>r1 FR2↑</th><th>r2 hyd-patch↑</th><th>r3 liability↑</th>
-              <th>r4 expr↑</th><th>r5 hallmark↑</th><th>r6 scaffold↑</th>
+              <th title="r1 — FR2 hydropathy (Kyte–Doolittle aggregation risk over framework-2 residues 36–53). Weight 0.15.">r1 FR2↑</th>
+              <th title="r2 — Hydrophobic-patch coverage (consecutive hydrophobic stretches that drive aggregation). Weight 0.20.">r2 hyd-patch↑</th>
+              <th title="r3 — Chemical-liability motifs: deamidation NG/NS/NT/NN, isomerization DG/DS/DT/DH, N-glycosylation, CDR methionine oxidation. Weight 0.25.">r3 liability↑</th>
+              <th title="r4 — Wilkinson–Harrison E. coli soluble-expression probability. Weight 0.15.">r4 expr↑</th>
+              <th title="r5 — VHH hallmark FR2 tetrad (Muyldermans 2013) — the camelid-VHH-defining residues at Kabat positions 37/44/45/47. Weight 0.15.">r5 hallmark↑</th>
+              <th title="r6 — Scaffold integrity: length + cysteine count + C-terminal linker. The only ungated reward (defines validity). Weight 0.10.">r6 scaffold↑</th>
               <th>muts vs NBv1</th>
             </tr>
           </thead>
@@ -723,16 +763,19 @@ const STATE = {
   miniViewers: {},
 };
 
-// (label, JSON key, training weight). Weights mirror configs/gdpo/*.yaml
-// reward_weights = [0.15, 0.20, 0.25, 0.15, 0.15, 0.10] — the composite
-// these sum to is the exact objective GDPO was trained to maximise.
+// (label, JSON key, training weight, hover description). Weights mirror
+// configs/gdpo/*.yaml reward_weights = [0.15, 0.20, 0.25, 0.15, 0.15, 0.10]
+// — the composite these sum to is the exact objective GDPO was trained to
+// maximise. Descriptions are surfaced via title= tooltips in the design
+// cards and properties table; they also appear in the always-visible
+// rewards-key strip above the table.
 const REWARD_KEYS = [
-  ['r1', 'reward_fr2_aggregation',  0.15],
-  ['r2', 'reward_hydrophobic_patch', 0.20],
-  ['r3', 'reward_liability',         0.25],
-  ['r4', 'reward_expression',        0.15],
-  ['r5', 'reward_vhh_hallmark',      0.15],
-  ['r6', 'reward_scaffold_integrity', 0.10],
+  ['r1', 'reward_fr2_aggregation',   0.15, 'FR2 hydropathy — Kyte–Doolittle aggregation risk over framework-2 (positions 36–53). Weight 0.15.'],
+  ['r2', 'reward_hydrophobic_patch', 0.20, 'Hydrophobic-patch coverage — penalises consecutive hydrophobic stretches that drive aggregation. Weight 0.20.'],
+  ['r3', 'reward_liability',         0.25, 'Chemical liability — deamidation (NG/NS/NT/NN), isomerization (DG/DS/DT/DH), N-glycosylation, CDR-Met oxidation. Weight 0.25.'],
+  ['r4', 'reward_expression',        0.15, 'E. coli expression — Wilkinson–Harrison soluble-expression probability. Weight 0.15.'],
+  ['r5', 'reward_vhh_hallmark',      0.15, 'VHH hallmark — FR2 tetrad characteristic of camelid heavy-chain antibodies (Muyldermans 2013). Weight 0.15.'],
+  ['r6', 'reward_scaffold_integrity', 0.10, 'Scaffold integrity — length + cysteine count + C-terminal linker. The only ungated reward (defines validity). Weight 0.10.'],
 ];
 
 function compositeReward(c) {
@@ -907,19 +950,20 @@ function renderDesignCards() {
     let bars = '';
     // Composite first (the GDPO objective), gold-emphasised so it draws the eye.
     const compPct = Math.max(0, Math.min(100, c.composite * 100));
-    bars += `<div class="bar-row composite-row">
+    bars += `<div class="bar-row composite-row" title="Composite GDPO reward = Σ wᵢ·rᵢ. The exact objective the model was trained to maximise.">
       <span class="bar-name">comp</span>
       <span class="bar-track"><span class="bar-fill composite-fill" style="width:${compPct}%;"></span></span>
       <span class="bar-val">${c.composite.toFixed(2)}</span>
     </div>`;
-    for (const [name, key] of REWARD_KEYS) {
+    for (const [name, key, , desc] of REWARD_KEYS) {
       const v = c[key];
       if (v === null || v === undefined || Number.isNaN(v)) continue;
       // Zero rewards get a thin neutral marker (not red) so the user can tell
       // the bar IS rendered — empty red looked broken in early screenshots.
       const cls = (v === 0) ? 'zero' : scoreClass(v);
       const pct = Math.max(0, Math.min(100, v * 100));
-      bars += `<div class="bar-row">
+      const titleAttr = desc ? ` title="${desc.replace(/"/g, '&quot;')}"` : '';
+      bars += `<div class="bar-row"${titleAttr}>
         <span class="bar-name">${name}</span>
         <span class="bar-track"><span class="bar-fill ${cls}" style="width:${pct}%;"></span></span>
         <span class="bar-val">${v.toFixed(2)}</span>
