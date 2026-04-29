@@ -34,7 +34,7 @@ docker run --rm --gpus all \
     -v "$(pwd)/hf_cache:/models" \
     ghcr.io/aikium-public/aiki-genano:1.0.0 \
     generate \
-        --epitope MNYPLTLEMDLENLEDLFWELDRLDNYNDTSLVENHL \
+        --epitope HAEGTFTSDVSSYLEGQAAKEFIAWLVKGRG \
         --n_candidates 50 \
         --temperature 0.7 \
         --model GDPO_DPO \
@@ -66,7 +66,7 @@ docker run --rm \
     -v "$(pwd)/output:/app/output" \
     -v "$(pwd)/hf_cache:/models" \
     ghcr.io/aikium-public/aiki-genano:1.0.0 \
-    generate --epitope MNYPLTLEMDLENLEDLFWELDRLDNYNDTSLVENHL \
+    generate --epitope HAEGTFTSDVSSYLEGQAAKEFIAWLVKGRG \
              --n_candidates 5 --model SFT --device cpu \
              --output /app/output/preds.csv
 ```

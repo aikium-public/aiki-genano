@@ -77,7 +77,7 @@ if (( SKIP_GENERATE )); then
     report PASS "POST /api/generate (skipped)"
 else
     gjson="$(curl -fsSL --max-time 240 -X POST "$URL/api/generate" -H 'Content-Type: application/json' \
-        -d '{"epitope":"MNYPLTLEMDLENLEDLFWELDRLDNYNDTSLVENHL","n_candidates":3,"model":"GDPO_DPO","seed":42}' || true)"
+        -d '{"epitope":"HAEGTFTSDVSSYLEGQAAKEFIAWLVKGRG","n_candidates":3,"model":"GDPO_DPO","seed":42}' || true)"
     ok="$(printf '%s' "$gjson" | python3 -c 'import json,sys;d=json.load(sys.stdin);c=d.get("candidates",[]);print(int(d.get("n_returned")==3 and len(c)==3 and "reward_scaffold_integrity" in c[0]))' 2>/dev/null || echo 0)"
     [[ "$ok" == "1" ]] && report PASS "POST /api/generate" || report FAIL "POST /api/generate: $gjson"
 fi

@@ -32,7 +32,7 @@ Deploy:
 
 Test locally (uses Modal's compute):
     modal run modal_app.py::warm_health
-    modal run modal_app.py::warm_generate --epitope MNYPLTLEMDLENLEDLFWELDRLDNYNDTSLVENHL --n_candidates 5
+    modal run modal_app.py::warm_generate --epitope HAEGTFTSDVSSYLEGQAAKEFIAWLVKGRG --n_candidates 5
 
 Public URLs after deploy:
     https://<workspace>--aiki-genano-fastapi-app.modal.run/
@@ -642,7 +642,7 @@ def warm_health():
 
 @app.local_entrypoint()
 def warm_generate(
-    epitope: str = "MNYPLTLEMDLENLEDLFWELDRLDNYNDTSLVENHL",
+    epitope: str = "HAEGTFTSDVSSYLEGQAAKEFIAWLVKGRG",
     n_candidates: int = 5,
 ):
     """End-to-end warm-up via Modal's local entrypoint: hits /api/generate."""

@@ -39,7 +39,7 @@ docker run --rm --gpus all \
     -v "$(pwd)/hf_cache:/models" \
     ghcr.io/aikium-public/aiki-genano:latest \
     generate \
-        --epitope MNYPLTLEMDLENLEDLFWELDRLDNYNDTSLVENHL \
+        --epitope HAEGTFTSDVSSYLEGQAAKEFIAWLVKGRG \
         --n_candidates 50 \
         --temperature 0.7 \
         --model GDPO_DPO \
@@ -57,7 +57,7 @@ docker run --rm \
     -v "$(pwd)/hf_cache:/models" \
     ghcr.io/aikium-public/aiki-genano:latest \
     generate \
-        --epitope MNYPLTLEMDLENLEDLFWELDRLDNYNDTSLVENHL \
+        --epitope HAEGTFTSDVSSYLEGQAAKEFIAWLVKGRG \
         --n_candidates 5 \
         --model SFT \
         --device cpu \

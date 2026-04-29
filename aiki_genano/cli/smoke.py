@@ -26,7 +26,7 @@ import tempfile
 from pathlib import Path
 
 
-_TEST_EPITOPE = "MNYPLTLEMDLENLEDLFWELDRLDNYNDTSLVENHL"  # one of the 10 Zenodo subset targets
+_TEST_EPITOPE = "HAEGTFTSDVSSYLEGQAAKEFIAWLVKGRG"  # GLP-1 (7-37), public peptide hormone (UniProt P01275), not in the Aikium training corpus
 
 _EXPECTED_GENERATE_COLUMNS = {
     "epitope", "generated_sequence", "gen_length", "is_valid_126",
