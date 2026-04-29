@@ -2,6 +2,12 @@
 
 All notable changes to Aiki-GeNano are documented here. Versioning follows [SemVer](https://semver.org/).
 
+## Container image rebuild — 2026-04-28
+
+The `ghcr.io/aikium-public/aiki-genano:1.0.0` image has been rebuilt and re-pushed from the sanitized 1.1.0 source tree. The original 1.0.0 image, built before the 2026-04-25 audit, baked in the pre-purge state of `aiki_genano/analysis/generation_2.ipynb` (cell 53 stdout had real screening constructs; cell 4 hardcoded an internal user-account path) plus internal-package-name references in several `.py` docstrings. The same image tag now points at the sanitized layers; users who pulled before 2026-04-28 should `docker pull --force` to refresh. The Aikium screening corpus, training data, and per-sequence binder strings were never bundled into any image (the COPY scope is `pyproject.toml`, `aiki_genano/`, `configs/`, `scripts/` only — `benchmarks/`, `data/`, `web/`, `paper/` are excluded), so the impact is limited to the notebook + docstring sanitization scope listed above.
+
+A versioned alias `:1.0.1` is published alongside `:1.0.0` for callers who want to pin to the post-sanitization image specifically.
+
 ## [1.1.0] — 2026-04-28
 
 Manuscript-revision sync. Source code, training pipeline, Docker image, and Zenodo data files are unchanged from 1.0.0; this release tracks paper, README, and Modal-landing updates.

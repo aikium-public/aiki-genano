@@ -65,6 +65,15 @@ docker push "$REGISTRY:latest"
 echo "[build_and_push] pushing $REGISTRY:$VERSION"
 docker push "$REGISTRY:$VERSION"
 
+# 2026-04-28: alongside the canonical $VERSION tag, also publish a
+# post-sanitization alias so callers can pin to the cleaned image. Skipped
+# unless ALSO_TAG is set (override with `ALSO_TAG=1.0.2` or similar).
+if [ -n "${ALSO_TAG:-}" ]; then
+    echo "[build_and_push] tagging + pushing $REGISTRY:$ALSO_TAG"
+    docker tag "$REGISTRY:latest" "$REGISTRY:$ALSO_TAG"
+    docker push "$REGISTRY:$ALSO_TAG"
+fi
+
 echo
 echo "[build_and_push] PUSH OK. Now flip package visibility to Public if not already:"
 echo "  gh api --method PATCH /orgs/aikium-public/packages/container/aiki-genano/visibility -f visibility=public"
