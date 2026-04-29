@@ -65,8 +65,15 @@ class GenerateRequest(BaseModel):
     # assumes batches of 10 for the alignment grid and 5x2 card layout;
     # the cap also bounds the per-IP surrogate-extraction calculus.
     n_candidates: int = Field(10, ge=1, le=50)
-    temperature: float = Field(0.7, gt=0.0, le=2.0)
-    top_p: float = Field(0.92, gt=0.0, le=1.0)
+    # Sampling temperature is constrained to the range evaluated in the paper
+    # ([0.7, 1.5]; the paper specifically reports 0.7, 0.9, 1.2). Below 0.7 an
+    # autoregressive LM concentrates probability mass on near-training-set
+    # sequences, which would let an adversary partially reconstruct training
+    # binders by querying the demo at low T with paper-disclosed epitopes.
+    temperature: float = Field(0.7, ge=0.7, le=1.5)
+    # Same logic for nucleus sampling: very small top_p collapses the
+    # candidate set to high-probability (i.e. training-resembling) tokens.
+    top_p: float = Field(0.92, ge=0.85, le=1.0)
     model: str = Field("GDPO_DPO", pattern="^(SFT|DPO|GDPO_DPO|GDPO_SFT)$")
     seed: int = Field(42, ge=0, le=2**31 - 1)
 

@@ -464,12 +464,10 @@ select.field-input { cursor: pointer; }
     <h2>Generate nanobody candidates for your epitope</h2>
     <p class="panel-sub">Submit a target sequence (4–244 amino acids; accepts linear peptides, disordered regions, or whole soluble domains — the construct epitope + 30-AA linker + 126-AA binder must fit ESMFold's 400-AA cap). Each request returns ten candidates ranked by the GDPO composite reward (Σ wᵢ·rᵢ), a multi-sequence alignment versus NBv1, and the ESMFold structure of the highest-ranked candidate. Structures for the remaining nine candidates are computed on demand via the <em>Compute structures for all 10</em> control below.</p>
 
-    <p class="examples-hint">Try one of the example targets below. The first three are N-terminal peptide windows of multi-pass GPCRs (the only solvent-exposed handle on those receptors). The fourth is a soluble IgV-like ectodomain of a single-pass membrane protein (PD-L1), illustrating that the model also handles whole domains, not only short peptides.</p>
+    <p class="examples-hint">Two example targets, neither in the paper's evaluation cohort: a 31-AA peptide hormone (GLP-1) and a 200-AA soluble extracellular domain (CD38 ECD). Click either to pre-fill the form.</p>
     <div class="examples">
-      <button class="example-btn" data-epitope="MNYPLTLEMDLENLEDLFWELDRLDNYNDTSLVENHL">CXCR5 — N-terminal epitope (P32302)</button>
-      <button class="example-btn" data-epitope="MLSTSRSRFIRNTNESGEEVTTFFDYDYGAPW">CCR2 — N-terminal peptide (P41597)</button>
-      <button class="example-btn" data-epitope="VGSNDIQYEDIKGDMASKLGYFPQKFPLTSFRGSPFQEKMTAW">CB1 — N-terminal peptide (P21554)</button>
-      <button class="example-btn" data-epitope="FTVTVPKDLYVVEYGSNMTIECKFPVEKQLDLAALIVYWEMEDKNIIQFVHGEEDLKVQHSSYRQRARLLKDQLSLGNAALQITDVKLQDAGVYRCMISYGGADYKRITVKVNAPYNK">PD-L1 — IgV-like ectodomain (Q9NZQ7)</button>
+      <button class="example-btn" data-epitope="HAEGTFTSDVSSYLEGQAAKEFIAWLVKGRG">GLP-1 (7-37) — incretin peptide hormone (P01275)</button>
+      <button class="example-btn" data-epitope="WRQQWSGPGTTKRFPETVLARCVKYTEIHPEMRHVDCQSVWDAFKGAFISKHPCNITEEDYQPLMKLGTQTVPCNKILLWSRIKDLAHQFTQVQRDMFTLEDTLLGYLADDLTWCGEFNTSKINYQSCPDWRKDCSNNPVSVFWKTVSRRFAEAACDVVHVMLNGSRSKIFDKNSTFGSVEVHNLQPEKVQTLEAWVIHG">CD38 — extracellular domain (P28907)</button>
     </div>
 
     <div class="try-form">
@@ -488,7 +486,7 @@ select.field-input { cursor: pointer; }
           <option value="SFT">SFT</option>
         </select>
         <span class="field-label" style="min-width: 80px;">Temp</span>
-        <input type="number" id="temperature" class="field-input" value="0.7" step="0.1" min="0.3" max="1.5" style="max-width:90px;">
+        <input type="number" id="temperature" class="field-input" value="0.7" step="0.1" min="0.7" max="1.5" style="max-width:90px;" title="Constrained to the range evaluated in the paper [0.7, 1.5]; lower temperatures resemble training sequences and are blocked server-side.">
       </div>
       <div class="field-row">
         <button id="generate-btn" class="btn-primary">Generate</button>
@@ -591,7 +589,7 @@ select.field-input { cursor: pointer; }
     <p class="panel-sub">An explicit statement of where this release is and is not appropriate, prior to use.</p>
     <div class="limits-grid">
       <div class="limit-card works"><div class="label">Works well</div><p>Linear peptides, intrinsically-disordered regions, and soluble domains resembling the 65 training targets. The training set spans both short peptide windows (e.g. multi-pass receptor N-termini) and whole soluble extracellular domains of single-pass membrane proteins. On a shared 10-target GPCR cohort, Aiki-GeNano achieves the highest predicted Tm and the lowest isomerization severity among five contemporary VHH generators (nanoBERT, IgLM, NanoAbLLaMA, ProteinDPO, IgGM). Tm, solubility, and chemical-liability scores are predicted, not assayed.</p></div>
-      <div class="limit-card care"><div class="label">Use with care</div><p>Targets that diverge in length or composition from the 65-target cohort, very long domains approaching ESMFold's 400-AA cap, and targets dominated by transmembrane segments. Generated sequences cluster within ≈8 amino acids of the closest training sequence (BLAST 92.8–93.6 % identity).</p></div>
+      <div class="limit-card care"><div class="label">Use with care</div><p>Targets that diverge in length or composition from the 65-target cohort, very long domains approaching ESMFold's 400-AA cap, and targets dominated by transmembrane segments. Generated sequences cluster within ≈8 amino acids of the closest training sequence (BLAST 92.8–93.6 % identity). Sampling temperature is constrained to the range evaluated in the paper [0.7, 1.5]; lower temperatures concentrate probability on training-resembling outputs and are not exposed by this demo.</p></div>
       <div class="limit-card skip"><div class="label">Will not work</div><p>Generated sequences have not been wet-lab validated for binding, expression yield, or developability. Use as a candidate-ranking tool, not a clinical pipeline.</p></div>
     </div>
   </div>
