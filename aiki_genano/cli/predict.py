@@ -13,8 +13,8 @@ Inputs (auto-detected by ``--sequences`` extension):
     .fasta   one record per sequence, header used as ``id``.
 
 Output: a CSV with the input rows plus one column per profile/property field.
-The column names match the Zenodo ``generated_sequences/{MODEL}/properties/``
-schema, so a downstream join just works.
+The column names match the per-sequence property tables published in the
+Zenodo deposit (``full_property_tables/{MODEL}_all_properties.csv``).
 """
 from __future__ import annotations
 

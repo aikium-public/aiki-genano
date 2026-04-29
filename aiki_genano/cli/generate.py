@@ -4,9 +4,9 @@ Loads the SFT base + chosen LoRA adapter from ``--checkpoint-dir``, decodes
 ``--n_candidates`` ChatML completions for the supplied epitope, scores each
 with the six GDPO reward functions, and writes a CSV.
 
-The reward column dictionary matches the paper and the Zenodo profiled CSVs
-exactly so a downstream join with ``generated_sequences/{MODEL}/properties/``
-just works.
+The reward column dictionary matches the paper exactly so the output CSV
+schema is consistent with the per-sequence property tables published in the
+Zenodo deposit (``full_property_tables/{MODEL}_all_properties.csv``).
 
 Heavy lifting (model load + tokenisation + sampling) is delegated to
 ``aiki_genano.training.inference`` so this entrypoint stays a thin CLI shell.
@@ -20,8 +20,9 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
-# Locations of the four checkpoint subdirectories inside --checkpoint-dir
-# (produced by scripts/download_checkpoints.sh from the Zenodo manifest).
+# Locations of the four checkpoint subdirectories inside --checkpoint-dir.
+# Trained checkpoints are NDA-gated (request via partnerships@aikium.com);
+# place them under these subpaths after receipt.
 _DEFAULT_CHECKPOINT_SUBDIRS = {
     "SFT": "SFT/NanoBody-design-sft-response-only-100k-len126-r64",
     "DPO": "DPO/checkpoint-6000",
@@ -45,7 +46,8 @@ def _build_argparser() -> argparse.ArgumentParser:
         description=(
             "Sample N candidate 126-AA VHH nanobody sequences for a target epitope, "
             "scored with the six GDPO reward functions. Writes a CSV whose schema "
-            "matches the Zenodo generated_sequences/ deposit."
+            "matches the per-sequence property tables in the Zenodo deposit "
+            "(full_property_tables/)."
         ),
     )
     inp = p.add_mutually_exclusive_group(required=True)

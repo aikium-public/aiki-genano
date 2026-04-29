@@ -5,7 +5,7 @@ Generates N sequences per target peptide with nucleus (top-p) sampling.
 Reports AA lengths, BPE token counts, and basic quality metrics.
 
 Usage:
-    python -m src.binder_design.protgpt2_GDPO.inference \
+    python -m aiki_genano.evaluation.inference_gdpo \
         --checkpoint /path/to/model \
         --test_csv data/nanobody/nanobody126/testing.csv \
         --num_targets 5 \

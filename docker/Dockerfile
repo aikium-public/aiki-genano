@@ -8,8 +8,8 @@
 #   docker build -f docker/Dockerfile -t ghcr.io/aikium-public/aiki-genano:latest .
 #
 # Mount points (decision §3.2):
-#   /app/checkpoints   4 trained checkpoints from Zenodo (run scripts/download_checkpoints.sh first)
-#   /app/data          training_subset/ + generated_sequences/ from Zenodo (training/eval only)
+#   /app/checkpoints   4 trained checkpoints (NDA-gated; request via partnerships@aikium.com)
+#   /app/data          user-supplied training data and/or sequence CSVs (training/eval only)
 #   /app/output        user-writable output dir
 #   /models            HF cache (ProtGPT2, Sapiens, NetSolP)
 #
