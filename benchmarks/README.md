@@ -1,6 +1,6 @@
 # Competing-tool benchmarks for Aiki-GeNano
 
-Smoke tests, install state, and head-to-head profiling results for every nanobody / antibody generator we compared against in the mAbs paper.
+Smoke tests, install state, and head-to-head profiling results for every nanobody / antibody generator we compared against in the mAbs (submitted) paper.
 
 | Reader | Read this first |
 |---|---|
@@ -51,7 +51,7 @@ python generators/test_iggm.py            # needs antigen PDB from ESMFold prefo
 
 ## Targets
 
-`targets.fasta` carries two test peptides used for smoke runs (`SLNFLGGLPPL`, an HIV-gp120-like 11mer, and `DIQMTQSPSSLSASVGDRVTITC`, a kappa FR1 fragment). Replace with your own epitope list for a full comparison run. The 10-target subset used in the mAbs paper is in the Zenodo deposit (`training_subset/targets.csv`).
+`targets.fasta` carries two test peptides used for smoke runs (`SLNFLGGLPPL`, an HIV-gp120-like 11mer, and `DIQMTQSPSSLSASVGDRVTITC`, a kappa FR1 fragment). Replace with your own epitope list for a full comparison run. The 10-target subset used in the mAbs (submitted) paper is in the Zenodo deposit (`training_subset/targets.csv`).
 
 ## ESMFold prefold + IgGM pipeline
 

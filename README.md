@@ -1,27 +1,29 @@
 # Aiki-GeNano
 
-Code for **"Preference-optimized generation of developable nanobodies across 65 epitope targets"** (Meda et al., mAbs 2026).
+Code for **"Aiki-GeNano: Multi-Stage Preference Optimization for Generative Design of Developable Nanobodies"** (Meda et al., mAbs (submitted, 2026)).
 
 A staged language-model alignment pipeline (SFT → DPO → GDPO) that takes a target peptide epitope and generates 126-AA Nb-v1 nanobody candidates with developability built into the training objective rather than applied as a post-hoc filter.
 
 | | |
 |---|---|
 | Paper (preprint) | bioRxiv (DOI assigned on screening) |
-| Data + weights | Zenodo deposit (forthcoming) |
+| Figure data | Zenodo: <https://doi.org/10.5281/zenodo.19757843> (CC-BY-NC-4.0) |
+| Trained checkpoints | available from `partnerships@aikium.com` (NDA) |
 | Docker image | `ghcr.io/aikium-public/aiki-genano:1.0.0` |
-| Live demo | [aiki-genano on Modal](https://aikium-public--aiki-genano-fastapi-app.modal.run) |
-| Licence | MIT (code) / CC-BY-NC-4.0 (weights + data) |
+| Live demo | [aiki-genano on Modal](https://aikium--aiki-genano-fastapi-app.modal.run) |
+| Licence | MIT (code) / CC-BY-NC-4.0 (figure data) |
 
 ## Quickstart
 
-### 1. Pull the image and the checkpoints
+### 1. Pull the image
 
 ```bash
 docker pull ghcr.io/aikium-public/aiki-genano:1.0.0
 git clone https://github.com/aikium-public/aiki-genano.git
 cd aiki-genano
-bash scripts/download_checkpoints.sh        # ~3.4 GB from Zenodo, sha256-verified
 ```
+
+The trained model checkpoints (SFT, DPO, GDPO_DPO, GDPO_SFT — ~3.4 GB combined) are not redistributed publicly; request access from `partnerships@aikium.com` and place them under `./checkpoints/{SFT,DPO,GDPO_DPO,GDPO_SFT}/` for the steps below. To play with the model without setting up checkpoints locally, use the [Modal demo](https://aikium--aiki-genano-fastapi-app.modal.run).
 
 ### 2. Generate 50 candidate nanobodies for an epitope
 
@@ -52,8 +54,9 @@ docker run --rm --gpus all \
     predict --sequences /app/output/preds.csv --with-properties \
             --output /app/output/preds_profiled.csv
 ```
+## Pre-trained model checkpoints
 
-Adds TEMPRO predicted Tm, NetSolP solubility, Sapiens humanness, and ~50 motif/biophysical/CDR/Aggrescan columns. First run downloads ~2 GB of foundation-model weights into `/models`; subsequent runs are warm.
+The four trained checkpoints (SFT merged + DPO / GDPO\_DPO / GDPO\_SFT LoRA adapters) are proprietary to Aikium Inc. and not redistributed publicly. They are available under non-disclosure agreement via [`partnerships@aikium.com`](mailto:partnerships@aikium.com) for academic evaluation, custom design campaigns, or licensed deployments. To try the model immediately without local checkpoints, use the [Modal demo](https://aikium--aiki-genano-fastapi-app.modal.run).
 
 ### 4. Without GPU (laptop demo)
 
@@ -72,39 +75,24 @@ PyTorch falls back to CPU; expect ~5 minutes per 5 candidates instead of ~5 seco
 
 ## Reproducing paper numbers
 
-The Zenodo deposit ships:
-- **Training subset**: 10,000 binder sequences across 10 representative target epitopes plus the matching 21,998 DPO preference pairs.
-- **Generated sequences + computed properties**: every sequence from the four paper models (SFT, DPO, GDPO_DPO, GDPO_SFT) at every reported seed (42, 123, 456) and temperature (0.7, 0.9, 1.2), restricted to the 10 disclosed targets.
-- **Model weights**: SFT full merged checkpoint plus DPO / GDPO_DPO / GDPO_SFT LoRA adapters.
-- **PROVENANCE.md**: each figure / table maps to the exact CSV(s) and the analysis-notebook cell that produced it.
+The numerical data underlying every figure and table in the paper is deposited at Zenodo ([10.5281/zenodo.19757843](https://doi.org/10.5281/zenodo.19757843), CC-BY-NC-4.0):
+
+- **`figure_data/`** — per-figure aggregates and per-position derivatives covering all 64 evaluated targets, plus the per-tool head-to-head benchmark table behind Fig 5.
+- **`full_property_tables/`** — per-sequence computed properties (TEMPRO Tm, NetSolP solubility, Sapiens humanness, six GDPO reward scores, motif counts, biophysical descriptors) for the 10 representative GPCR targets disclosed in the paper. Amino-acid sequences are stripped.
+- **`PROVENANCE.md`** — figure-by-figure mapping to the exact CSV(s).
+
+The deposit is sufficient to verify every numerical claim in the paper. The 1.35 M nanobody–epitope screening corpus, the 522,800 DPO preference pairs, the generated-sequence amino-acid strings, and the trained checkpoints are not redistributed; request via [`partnerships@aikium.com`](mailto:partnerships@aikium.com) under NDA.
 
 ```bash
-# Recompute one figure end-to-end from the Zenodo bundle
+# Re-score a sequence list under the property pipeline used in the paper
 docker run --rm --gpus all \
-    -v "$(pwd)/zenodo_deposit:/app/data" \
+    -v "$(pwd)/sequences:/app/data" \
     -v "$(pwd)/output:/app/output" \
     -v "$(pwd)/hf_cache:/models" \
     ghcr.io/aikium-public/aiki-genano:1.0.0 \
-    predict \
-        --sequences /app/data/generated_sequences/GDPO_DPO/properties/GDPO_DPO_seed42_temp0.7_profiled.csv \
-        --output /app/output/recomputed.csv
+    predict --sequences /app/data/my_sequences.csv \
+            --output /app/output/profiled.csv
 ```
-
-Numbers will reflect the 10-target subset; the paper headline numbers are aggregated over all 65 targets and use the proprietary screen.
-
-## Re-training on the released subset
-
-```bash
-docker run --rm --gpus all \
-    -v "$(pwd)/zenodo_deposit:/app/data" \
-    -v "$(pwd)/checkpoints:/app/checkpoints" \
-    -v "$(pwd)/output:/app/output" \
-    -v "$(pwd)/hf_cache:/models" \
-    ghcr.io/aikium-public/aiki-genano:1.0.0 \
-    train --stage sft --config sft_10k
-```
-
-SFT runs ~few GPU-hours per 10,000 steps on an A100 40 GB. DPO is similar. GDPO is ~30 minutes for the 2,000-step run reported in the paper. Subset training is for verification — paper headline numbers require the proprietary 65-target dataset.
 
 ## Project layout
 
@@ -133,7 +121,7 @@ Every input epitope and every output sequence is uppercase amino-acid letters. G
 ## FAQ
 
 **Q. Can I generate nanobodies for any target?**
-Yes — pass any short peptide as `--epitope`. The model has only seen Aikium's 65 training targets, so quality is best on epitopes resembling those (linear peptide, IDR, or extended disordered region). Quality on globular folded targets is untested.
+Yes — pass a target sequence (linear peptide, intrinsically-disordered region, or whole soluble domain) of 4–244 amino acids as `--epitope`. The model has seen 65 training targets spanning short peptide windows (e.g. multi-pass receptor N-termini) and whole soluble extracellular domains of single-pass membrane proteins, so quality is best on inputs resembling those. Inputs dominated by transmembrane segments or with strong conformational dependence are not covered by the training distribution.
 
 **Q. How big is the image?**
 About 5.6 GB compressed / 16 GB on disk. CUDA 12.1 + PyTorch 2.2 + transformers 4.57 + the NVIDIA TRL-GDPO fork + property predictors. Foundation-model weights download to `/models` on first run, not bundled.
@@ -160,12 +148,22 @@ Add a function with signature `f(completions: list[str], **kwargs) -> list[float
 
 ```bibtex
 @article{Meda2026Aiki-GeNano,
-  title   = {Preference-optimized generation of developable nanobodies across 65 epitope targets},
+  title   = {Aiki-GeNano: Multi-Stage Preference Optimization for Generative Design of Developable Nanobodies},
   author  = {Meda, Radheesh Sharma and Doshi, Jigar and Iyer, Eswar and
              Shastry, Shankar and Mysore, Venkatesh},
   journal = {mAbs},
   year    = {2026},
-  note    = {Preprint forthcoming on bioRxiv}
+  note    = {Submitted; preprint forthcoming on bioRxiv}
+}
+
+@dataset{Aiki-GeNano-Zenodo-2026,
+  title     = {Aiki-GeNano figure data and computed property profiles},
+  author    = {Meda, Radheesh Sharma and Doshi, Jigar and Iyer, Eswar and
+               Shastry, Shankar and Mysore, Venkatesh},
+  publisher = {Zenodo},
+  year      = {2026},
+  doi       = {10.5281/zenodo.19757843},
+  url       = {https://doi.org/10.5281/zenodo.19757843}
 }
 ```
 
@@ -177,4 +175,4 @@ Each upstream model and dataset retains its own licence. Users deploying Aiki-Ge
 
 ## Acknowledgements
 
-We thank the entire Synthetic Biology and Protein Sciences teams at Aikium Inc. for their contributions to data generation. A portion of this work was enabled by the Google for AI Startups program and by infrastructure support from Modal for model hosting.
+We thank the entire Synthetic Biology and Protein Sciences teams at Aikium Inc. for their contributions to data generation. The paper's nanobody-specific developability framing draws on the Therapeutic Nanobody Profiler (Gordon, Gervasio, Souders, Deane 2026, Oxford OPIG); the head-to-head benchmark contrasts against five contemporary VHH generators (nanoBERT, IgLM, NanoAbLLaMA, ProteinDPO, IgGM). A portion of this work was enabled by the Google for AI Startups program and by infrastructure support from Modal for model hosting.

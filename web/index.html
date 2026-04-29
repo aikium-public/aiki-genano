@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aiki-GeNano: Multi-Stage Preference Optimization for Generative Design of Developable Nanobodies | Aikium</title>
+<meta name="description" content="Aiki-GeNano generates developable 126-AA nanobody candidates against a target sequence (peptide or soluble domain) via staged language-model alignment (SFT → DPO → GDPO) on ProtGPT2. Highest predicted Tm and lowest isomerization severity vs five contemporary VHH generators. From Aikium, Inc.">
+
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://aikium--aiki-genano-fastapi-app.modal.run/">
+<meta property="og:title" content="Aiki-GeNano: Multi-Stage Preference Optimization for Generative Design of Developable Nanobodies">
+<meta property="og:description" content="Multi-stage preference optimization for generative design of developable nanobodies. Returns ranked candidates with developability scores, multi-sequence alignment versus the NBv1 scaffold, and on-demand ESMFold structures. mAbs (submitted, 2026).">
+<meta property="og:site_name" content="Aikium">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Aiki-GeNano: Multi-Stage Preference Optimization for Generative Design of Developable Nanobodies">
+<meta name="twitter:description" content="Multi-stage preference optimization for generative design of developable nanobodies. mAbs (submitted, 2026).">
+<link rel="canonical" href="https://aikium--aiki-genano-fastapi-app.modal.run/">
+<meta name="author" content="Aikium, Inc.">
+<meta name="robots" content="index, follow">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://3Dmol.csb.pitt.edu/build/3Dmol-min.js"></script>
+
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+:root {
+  --primary-gold: #C9A961; --rich-gold: #B8932F; --deep-gold: #A67C2B;
+  --champagne: #D4C5A0; --rose-gold: #B88A61;
+  --deep-charcoal: #0F0F0F; --charcoal: #1A1A1A; --soft-charcoal: #2A2A2A;
+  --warm-grey: #3A3A3A; --dove-grey: #6A6A6A;
+  --emerald: #5e9c6e; --amber: #B8932F; --burgundy: #ff9d8a; --info: #58a6ff;
+  --pearl: #FAFAF8; --ivory: #F5F5F3; --alabaster: #E8E8E6;
+  --shadow-elevated: 0 10px 40px rgba(201,169,97,0.12), 0 3px 8px rgba(0,0,0,0.18);
+  --shadow-luxury: 0 20px 60px rgba(201,169,97,0.15), 0 5px 15px rgba(0,0,0,0.25);
+  --gradient-gold: linear-gradient(135deg, #C9A961 0%, #B8932F 50%, #A67C2B 100%);
+  --gradient-dark: linear-gradient(160deg, #0F0F0F 0%, #1A1A1A 40%, #2A2A2A 100%);
+}
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: radial-gradient(circle at top left, rgba(201,169,97,0.10), transparent 28%),
+              radial-gradient(circle at top right, rgba(184,138,97,0.08), transparent 24%),
+              var(--gradient-dark);
+  color: var(--pearl); min-height: 100vh; line-height: 1.7; font-weight: 400;
+  letter-spacing: -0.01em; -webkit-font-smoothing: antialiased;
+}
+.container { max-width: 1280px; margin: 0 auto; padding: 0 28px; }
+h1, h2, h3, h4 { font-family: 'Playfair Display', serif; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
+a { color: var(--primary-gold); text-decoration: none; transition: color 0.2s; }
+a:hover { color: var(--champagne); }
+code { font-family: 'JetBrains Mono', monospace; background: rgba(201,169,97,0.08); border: 1px solid rgba(201,169,97,0.18); padding: 0.1em 0.4em; border-radius: 4px; font-size: 0.9em; color: var(--champagne); }
+pre { background: rgba(0,0,0,0.45); border: 1px solid rgba(201,169,97,0.18); border-radius: 8px; padding: 14px 18px; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: var(--alabaster); line-height: 1.55; }
+pre code { background: none; border: none; padding: 0; color: inherit; }
+
+/* ============== STICKY HEADER ============== */
+.sticky-header {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(15,15,15,0.92); backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(201,169,97,0.18);
+  padding: 10px 0;
+}
+.sticky-header-inner {
+  max-width: 1280px; margin: 0 auto; padding: 0 28px;
+  display: flex; align-items: center; gap: 14px;
+}
+.sticky-logo { width: 32px; height: 32px; border-radius: 6px; background: transparent; }
+.sticky-title { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 1.05rem; color: var(--pearl); }
+.sticky-sub { font-size: 0.78rem; color: var(--dove-grey); margin-left: 6px; }
+.sticky-action {
+  margin-left: auto; padding: 7px 16px; border-radius: 999px;
+  background: rgba(201,169,97,0.12); border: 1px solid rgba(201,169,97,0.28);
+  color: var(--champagne); font-size: 0.82rem; font-weight: 600;
+}
+.sticky-action:hover { background: var(--gradient-gold); color: var(--deep-charcoal); }
+@media (max-width: 720px) { .sticky-sub { display: none; } }
+
+/* ============== HERO ============== */
+.hero {
+  position: relative; border: 1px solid rgba(201,169,97,0.25); border-radius: 18px;
+  padding: 28px 32px 24px; margin: 22px 0 24px; box-shadow: var(--shadow-luxury);
+  background: linear-gradient(180deg, rgba(6,8,10,0.95), rgba(12,14,16,0.95));
+  text-align: center; backdrop-filter: blur(20px); overflow: hidden;
+}
+.hero::after {
+  content: ''; position: absolute; inset: -2px; border-radius: inherit; padding: 2px;
+  background: var(--gradient-gold);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  pointer-events: none; opacity: 0.5;
+}
+.logo-box {
+  position: relative; width: 64px; height: 64px; margin: 0 auto 12px;
+  border-radius: 12px; background: transparent;
+  border: 1.5px solid rgba(201,169,97,0.55);
+  display: flex; align-items: center; justify-content: center;
+}
+.logo-box::before {
+  content: ''; position: absolute; inset: -6px; border-radius: 18px;
+  background: radial-gradient(circle at 50% 50%, rgba(201,169,97,0.28) 0%, transparent 70%);
+  animation: flamePulse 3.6s ease-in-out infinite; z-index: -1; pointer-events: none;
+}
+@keyframes flamePulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.96); }
+  50%      { opacity: 0.82; transform: scale(1.04); }
+}
+.logo-box img { width: 82%; height: 82%; object-fit: contain; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.4)); }
+.hero-eyebrow {
+  display: inline-block; font-size: 0.72rem; font-weight: 600; color: var(--champagne);
+  text-transform: uppercase; letter-spacing: 0.22em; margin-bottom: 6px; font-family: 'Inter', sans-serif;
+}
+.hero h1 {
+  font-size: clamp(1.7rem, 3.4vw, 2.4rem); margin-bottom: 8px;
+  background: linear-gradient(135deg, var(--pearl) 0%, var(--champagne) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.tagline {
+  font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; color: var(--alabaster);
+  max-width: 760px; margin: 0 auto 12px; font-style: italic; font-weight: 400; line-height: 1.45;
+}
+.hero-inline-stats {
+  display: inline-flex; flex-wrap: wrap; gap: 22px; justify-content: center;
+  padding: 8px 18px; background: rgba(201,169,97,0.06); border: 1px solid rgba(201,169,97,0.16);
+  border-radius: 8px; margin-top: 10px;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--champagne);
+}
+.hero-inline-stats strong { color: var(--pearl); font-weight: 600; }
+
+/* ============== PANEL ============== */
+.panel {
+  position: relative; border: 1px solid rgba(201,169,97,0.22); border-radius: 14px;
+  padding: 22px 28px 24px; margin: 18px 0;
+  background: linear-gradient(180deg, rgba(15,15,15,0.85), rgba(20,20,20,0.85));
+  box-shadow: var(--shadow-elevated);
+}
+.panel-eyebrow { font-size: 0.66rem; font-weight: 700; color: var(--rose-gold); text-transform: uppercase; letter-spacing: 0.2em; margin-bottom: 6px; }
+.panel h2 { font-size: clamp(1.2rem, 2vw, 1.55rem); color: var(--pearl); margin-bottom: 6px; }
+.panel-sub { color: var(--dove-grey); font-size: 0.92rem; margin-bottom: 18px; max-width: 760px; }
+
+/* ============== TRY-IT FORM ============== */
+.try-form { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 14px; }
+.field-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.field-label { font-size: 0.72rem; font-weight: 600; color: var(--champagne); text-transform: uppercase; letter-spacing: 0.16em; min-width: 110px; }
+.field-input {
+  flex: 1; min-width: 240px; background: rgba(0,0,0,0.5); color: var(--pearl);
+  font-family: 'JetBrains Mono', monospace;
+  border: 1px solid rgba(201,169,97,0.25); border-radius: 6px;
+  padding: 9px 12px; font-size: 0.88rem; outline: none; transition: border-color 0.2s;
+}
+.field-input:focus { border-color: var(--primary-gold); }
+select.field-input { cursor: pointer; }
+.examples-hint { font-size: 0.84rem; color: var(--dove-grey); margin: 6px 0 8px; line-height: 1.5; max-width: 760px; }
+.examples { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.example-btn {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.78rem;
+  background: rgba(201,169,97,0.06); color: var(--champagne);
+  border: 1px solid rgba(201,169,97,0.22); border-radius: 6px;
+  padding: 6px 12px; cursor: pointer; transition: all 0.2s;
+}
+.example-btn:hover { background: rgba(201,169,97,0.14); color: var(--pearl); }
+.btn-primary {
+  background: var(--gradient-gold); color: var(--deep-charcoal);
+  border: none; border-radius: 8px; padding: 11px 26px;
+  font-family: 'Inter', sans-serif; font-weight: 700; font-size: 0.92rem;
+  cursor: pointer; letter-spacing: 0.02em;
+  box-shadow: 0 4px 14px rgba(201,169,97,0.28); transition: all 0.2s;
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(201,169,97,0.45); }
+.btn-primary:disabled { opacity: 0.5; cursor: wait; transform: none; }
+.btn-secondary {
+  background: rgba(201,169,97,0.08); color: var(--champagne);
+  border: 1px solid rgba(201,169,97,0.32); border-radius: 8px;
+  padding: 9px 18px; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.86rem;
+  cursor: pointer; transition: all 0.2s;
+}
+.btn-secondary:hover { background: rgba(201,169,97,0.16); color: var(--pearl); }
+.btn-secondary:disabled { opacity: 0.5; cursor: wait; }
+#status { font-size: 0.85rem; color: var(--rose-gold); margin-top: 6px; min-height: 1.2em; }
+
+/* ============== RESULTS — TABLE ============== */
+.results-meta { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--dove-grey); margin-bottom: 8px; }
+.results-table { width: 100%; border-collapse: collapse; font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; background: rgba(0,0,0,0.35); border: 1px solid rgba(201,169,97,0.18); border-radius: 8px; overflow: hidden; }
+.results-table th { background: rgba(201,169,97,0.08); color: var(--champagne); text-align: left; padding: 8px 10px; font-weight: 600; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid rgba(201,169,97,0.18); white-space: nowrap; }
+.results-table td { padding: 7px 10px; color: var(--alabaster); border-bottom: 1px solid rgba(255,255,255,0.04); white-space: nowrap; }
+.results-table tr:last-child td { border-bottom: none; }
+.results-table tr.selected { background: rgba(201,169,97,0.10); }
+.results-table tr:hover { background: rgba(201,169,97,0.05); cursor: pointer; }
+.results-table .seq { font-size: 0.7rem; color: var(--alabaster); }
+.results-table .invalid { color: var(--burgundy); font-weight: 700; }
+.results-table .valid   { color: var(--emerald);  font-weight: 700; }
+
+.score-cell { display: inline-block; padding: 1px 7px; border-radius: 4px; font-weight: 600; font-size: 0.74rem; min-width: 36px; text-align: center; }
+.score-cell.good { background: rgba(74,138,107,0.18); color: #8FBA9B; }
+.score-cell.ok   { background: rgba(184,147,47,0.18); color: #f3d28f; }
+.score-cell.bad  { background: rgba(255,157,138,0.18); color: var(--burgundy); }
+.score-cell.composite { font-weight: 800; min-width: 48px; padding: 2px 9px; box-shadow: inset 0 0 0 1px rgba(201,169,97,0.45); letter-spacing: 0.02em; }
+
+/* ============== ALIGNMENT ============== */
+.alignment-wrap {
+  margin-top: 16px; border: 1px solid rgba(201,169,97,0.18); border-radius: 8px;
+  background: rgba(0,0,0,0.35); padding: 12px 14px;
+}
+.alignment-legend {
+  display: flex; gap: 14px; flex-wrap: wrap; align-items: center;
+  font-size: 0.74rem; color: var(--dove-grey); margin-bottom: 10px;
+}
+.legend-swatch { display: inline-block; width: 14px; height: 12px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
+.alignment-grid {
+  display: grid; gap: 1px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.aln-row { display: grid; grid-template-columns: 38px 30px repeat(126, 12px); gap: 1px; align-items: center; }
+.aln-rownum { color: var(--dove-grey); text-align: right; padding-right: 6px; font-size: 0.7rem; }
+.aln-flag { font-size: 0.7rem; text-align: center; }
+.aln-cell {
+  text-align: center; padding: 2px 0; border-radius: 2px;
+  background: rgba(255,255,255,0.02); color: var(--dove-grey);
+}
+.aln-cell.consensus { color: var(--alabaster); background: rgba(255,255,255,0.03); }
+.aln-cell.mut1 { color: var(--pearl); background: rgba(184,138,97,0.30); font-weight: 600; }
+.aln-cell.mut2 { color: var(--pearl); background: rgba(201,169,97,0.45); font-weight: 700; }
+.aln-cell.mut3 { color: var(--deep-charcoal); background: var(--primary-gold); font-weight: 700; }
+.aln-region { display: grid; grid-template-columns: 38px 30px repeat(126, 12px); gap: 1px; font-size: 0.6rem; color: var(--dove-grey); margin-bottom: 4px; }
+.aln-region span { text-align: center; line-height: 1; padding: 2px 0; }
+.aln-region span.cdr1 { background: rgba(47,107,255,0.22); color: #b8d2ff; border-radius: 2px; }
+.aln-region span.cdr2 { background: rgba(63,185,80,0.22); color: #b9eebf; border-radius: 2px; }
+.aln-region span.cdr3 { background: rgba(255,157,138,0.22); color: #ffd0c4; border-radius: 2px; }
+
+/* ============== DESIGN CARDS GRID ============== */
+.design-grid {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;
+  margin-top: 16px;
+}
+@media (max-width: 1100px) { .design-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 720px)  { .design-grid { grid-template-columns: repeat(2, 1fr); } }
+.design-card {
+  border: 1px solid rgba(201,169,97,0.18); border-radius: 10px;
+  padding: 12px 14px; background: rgba(15,15,15,0.6);
+  cursor: pointer; transition: all 0.2s;
+}
+.design-card.selected { border-color: var(--primary-gold); background: rgba(201,169,97,0.06); box-shadow: 0 0 0 1px rgba(201,169,97,0.32); }
+.design-card:hover { border-color: rgba(201,169,97,0.4); }
+.design-card .num {
+  font-family: 'Playfair Display', serif; font-weight: 700; color: var(--primary-gold);
+  font-size: 1.1rem; line-height: 1;
+}
+.design-card .badges { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+.dc-badge { font-size: 0.66rem; font-weight: 700; padding: 1px 6px; border-radius: 999px; }
+.dc-badge.valid { background: rgba(63,185,80,0.18); color: var(--emerald); }
+.dc-badge.invalid { background: rgba(255,157,138,0.16); color: var(--burgundy); }
+.bars { margin-top: 8px; display: grid; gap: 4px; }
+.bar-row { display: grid; grid-template-columns: 60px 1fr 32px; gap: 8px; align-items: center; font-family: 'JetBrains Mono', monospace; font-size: 0.66rem; }
+.bar-name { color: var(--dove-grey); text-transform: uppercase; letter-spacing: 0.06em; }
+/* Empty track must be visible even when the value is 0.000. CRITICAL:
+   <span> defaults to display:inline, where height/width are no-ops; without
+   display:block the track collapses to zero pixels and looks like the bars
+   never rendered. */
+.bar-track { display: block; height: 7px; width: 100%; background: rgba(255,255,255,0.14); border: 1px solid rgba(201,169,97,0.18); border-radius: 999px; overflow: hidden; box-sizing: border-box; }
+.bar-fill  { display: block; height: 100%; min-width: 3px; border-radius: 999px; transition: width 0.3s; }
+.bar-fill.good { background: linear-gradient(90deg, rgba(94,156,110,0.55), var(--emerald)); box-shadow: 0 0 5px rgba(94,156,110,0.25); }
+.bar-fill.ok   { background: linear-gradient(90deg, rgba(184,147,47,0.6), var(--amber)); box-shadow: 0 0 6px rgba(184,147,47,0.30); }
+.bar-fill.bad  { background: linear-gradient(90deg, rgba(255,157,138,0.6), var(--burgundy)); box-shadow: 0 0 6px rgba(120,40,40,0.30); }
+.bar-fill.zero { background: rgba(255,255,255,0.22); }
+.bar-row.composite-row { padding-bottom: 4px; border-bottom: 1px solid rgba(201,169,97,0.18); margin-bottom: 4px; }
+.bar-row.composite-row .bar-name { color: var(--primary-gold); font-weight: 700; }
+.bar-row.composite-row .bar-val { color: var(--primary-gold); font-weight: 700; }
+.bar-fill.composite-fill { background: linear-gradient(90deg, rgba(201,169,97,0.55), var(--primary-gold)); box-shadow: 0 0 8px rgba(201,169,97,0.45); }
+.bar-val { text-align: right; color: var(--alabaster); }
+.design-card .mutbar { margin-top: 8px; font-size: 0.66rem; color: var(--dove-grey); font-family: 'JetBrains Mono', monospace; }
+
+/* ============== STRUCTURE VIEWERS ============== */
+.viewer-shell { margin-top: 18px; }
+.viewer-main {
+  border: 1px solid rgba(201,169,97,0.22); border-radius: 12px; overflow: hidden;
+  background: linear-gradient(160deg, rgba(15,15,15,0.96), rgba(10,10,10,0.96));
+}
+.viewer-main .viewer-box { width: 100%; height: 460px; position: relative; background: #0F0F0F; }
+.viewer-main .viewer-info {
+  display: flex; flex-wrap: wrap; gap: 14px; align-items: center;
+  padding: 12px 18px; border-top: 1px solid rgba(201,169,97,0.16);
+  font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--alabaster);
+}
+.viewer-info .meta { color: var(--dove-grey); }
+.viewer-info strong { color: var(--champagne); }
+.viewer-info .legend { display: flex; gap: 10px; margin-left: auto; flex-wrap: wrap; font-size: 0.7rem; }
+.legend-pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 999px; background: rgba(255,255,255,0.04); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+.deep-dive-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 14px; margin-bottom: 6px; }
+.viewer-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+@media (max-width: 1100px) { .viewer-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 720px)  { .viewer-grid { grid-template-columns: repeat(2, 1fr); } }
+.viewer-card {
+  border: 1px solid rgba(201,169,97,0.18); border-radius: 10px; overflow: hidden;
+  background: rgba(15,15,15,0.6); cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+.viewer-card:hover { border-color: rgba(201,169,97,0.55); transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,0.4); }
+.viewer-card.selected { border-color: var(--primary-gold); box-shadow: 0 0 0 1px rgba(201,169,97,0.55), 0 6px 18px rgba(0,0,0,0.4); }
+.viewer-card .viewer-mini { width: 100%; height: 220px; background: #0F0F0F; position: relative; }
+.viewer-card .vc-foot { padding: 8px 10px; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--alabaster); display: flex; justify-content: space-between; }
+.viewer-card .vc-num { color: var(--champagne); font-weight: 700; }
+.viewer-card .vc-plddt { color: var(--dove-grey); }
+
+.caveat {
+  margin-top: 10px; padding: 10px 14px; border: 1px dashed rgba(201,169,97,0.25); border-radius: 8px;
+  background: rgba(201,169,97,0.04); font-size: 0.78rem; color: var(--alabaster); line-height: 1.5;
+}
+
+/* ============== HOW IT WORKS / LIMITS / REPRO / CREDITS ============== */
+.stages-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+@media (max-width: 720px) { .stages-grid { grid-template-columns: 1fr; } }
+.stage-card { border: 1px solid rgba(201,169,97,0.18); border-radius: 10px; padding: 16px 18px; background: rgba(20,20,20,0.6); }
+.stage-num { font-family: 'Playfair Display', serif; font-size: 1.6rem; color: var(--primary-gold); font-weight: 700; line-height: 1; }
+.stage-card h3 { font-size: 1.1rem; color: var(--pearl); margin: 6px 0 6px; }
+.stage-card p { font-size: 0.88rem; color: var(--alabaster); }
+
+.limits-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+@media (max-width: 720px) { .limits-grid { grid-template-columns: 1fr; } }
+.limit-card { border: 1px solid rgba(201,169,97,0.16); border-radius: 10px; padding: 14px 16px; background: rgba(15,15,15,0.6); }
+.limit-card .label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; margin-bottom: 6px; }
+.limit-card.works .label { color: var(--emerald); }
+.limit-card.care .label { color: #b8932f; }
+.limit-card.skip .label { color: var(--burgundy); }
+.limit-card p { font-size: 0.85rem; color: var(--alabaster); }
+
+.repro-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+@media (max-width: 720px) { .repro-grid { grid-template-columns: 1fr; } }
+.repro-card { border: 1px solid rgba(201,169,97,0.18); border-radius: 10px; padding: 12px 16px; background: rgba(15,15,15,0.6); display: flex; flex-direction: column; gap: 4px; }
+.repro-card .label { font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.18em; color: var(--champagne); }
+.repro-card a { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; word-break: break-all; }
+.repro-card .desc { font-size: 0.82rem; color: var(--dove-grey); }
+
+.credits-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+@media (max-width: 720px) { .credits-grid { grid-template-columns: 1fr; } }
+.credits-col .credits-label { font-size: 0.7rem; font-weight: 700; color: var(--rose-gold); text-transform: uppercase; letter-spacing: 0.2em; margin-bottom: 8px; border-bottom: 1px solid rgba(201,169,97,0.18); padding-bottom: 4px; }
+.credits-col ul { list-style: none; }
+.credits-col li { font-size: 0.82rem; color: var(--alabaster); margin: 4px 0; line-height: 1.5; }
+.credits-col li a { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; }
+.credits-note { margin-top: 18px; font-size: 0.78rem; color: var(--dove-grey); font-style: italic; border-top: 1px solid rgba(201,169,97,0.14); padding-top: 12px; line-height: 1.6; }
+
+.partner-cta { margin: 24px 0; padding: 18px 24px; border: 1px solid rgba(201,169,97,0.32); border-radius: 12px; background: linear-gradient(135deg, rgba(184,147,47,0.10), rgba(166,124,43,0.06)); text-align: center; }
+.partner-cta h3 { font-family: 'Playfair Display', serif; font-size: 1.2rem; color: var(--champagne); margin-bottom: 6px; }
+.partner-cta p { font-size: 0.92rem; color: var(--alabaster); margin-bottom: 10px; }
+.partner-cta a { display: inline-block; background: var(--gradient-gold); color: var(--deep-charcoal); padding: 9px 22px; border-radius: 8px; font-weight: 700; font-size: 0.88rem; letter-spacing: 0.02em; }
+.partner-cta a:hover { transform: translateY(-1px); }
+
+/* Scaffold lock-in callout — sits between the hero and try-it form, so a
+   first-time visitor knows the model varies CDRs only. */
+.scaffold-callout {
+  margin: 18px 0 22px; padding: 16px 20px;
+  border: 1px solid rgba(201,169,97,0.30); border-left: 3px solid var(--primary-gold);
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(201,169,97,0.06), rgba(15,15,15,0.65));
+  display: flex; gap: 14px; align-items: flex-start;
+  font-size: 0.92rem; line-height: 1.55; color: var(--alabaster);
+}
+.scaffold-callout .sc-icon { color: var(--primary-gold); font-size: 1.3rem; line-height: 1; padding-top: 2px; flex-shrink: 0; }
+.scaffold-callout code { background: rgba(0,0,0,0.45); padding: 1px 6px; border-radius: 4px; color: var(--champagne); font-family: 'JetBrains Mono', monospace; font-size: 0.85em; }
+.scaffold-callout a { color: var(--champagne); text-decoration: underline; text-decoration-color: rgba(201,169,97,0.4); text-underline-offset: 2px; }
+.scaffold-callout a:hover { color: var(--primary-gold); }
+
+/* Verbatim paper abstract — italic serif on a left-bordered card,
+   matches aiki-xp landing convention. */
+.paper-abstract {
+  background: rgba(20,20,20,0.55);
+  border-left: 3px solid var(--primary-gold);
+  border-radius: 8px;
+  padding: 22px 26px; margin-top: 14px;
+  font-family: 'Cormorant Garamond', 'Playfair Display', serif;
+  font-size: 1.08rem; line-height: 1.65;
+  color: var(--alabaster); font-style: italic;
+}
+.paper-abstract p { margin-bottom: 12px; }
+.paper-abstract p:last-child { margin-bottom: 0; }
+.paper-abstract strong { color: var(--champagne); font-style: normal; font-weight: 600; }
+
+/* Glossary: collapsible <dl>. Toggle is a small button under the abstract. */
+.glossary-toggle {
+  display: inline-block; margin-top: 16px; padding: 8px 16px;
+  border: 1px solid rgba(201,169,97,0.30); border-radius: 999px;
+  background: rgba(15,15,15,0.6); color: var(--champagne);
+  font-family: 'JetBrains Mono', monospace; font-size: 0.78rem;
+  cursor: pointer; user-select: none; transition: background 0.15s, border-color 0.15s;
+}
+.glossary-toggle:hover { border-color: var(--primary-gold); background: rgba(201,169,97,0.08); }
+.glossary { display: none; margin-top: 14px; padding: 18px 22px;
+  border: 1px solid rgba(201,169,97,0.18); border-radius: 10px;
+  background: rgba(15,15,15,0.6);
+  font-size: 0.92rem; line-height: 1.55;
+}
+.glossary.open { display: block; }
+.glossary dt { color: var(--primary-gold); font-family: 'JetBrains Mono', monospace; font-size: 0.86rem; font-weight: 700; margin-top: 12px; }
+.glossary dt:first-of-type { margin-top: 0; }
+.glossary dd { margin: 4px 0 0 0; color: var(--alabaster); }
+.glossary code { background: rgba(0,0,0,0.45); padding: 1px 5px; border-radius: 3px; color: var(--champagne); font-size: 0.85em; }
+
+.footer { margin: 30px 0 24px; padding: 20px 28px; border: 1px solid rgba(201,169,97,0.18); border-radius: 12px; background: rgba(10,10,10,0.7); text-align: center; }
+.footer-links { display: flex; justify-content: center; flex-wrap: wrap; gap: 18px; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; margin-bottom: 10px; }
+.footer-mini { font-size: 0.76rem; color: var(--dove-grey); margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<!-- STICKY HEADER -->
+<header class="sticky-header">
+  <div class="sticky-header-inner">
+    <img src="aikium_logo.png" alt="Aikium" class="sticky-logo">
+    <span class="sticky-title">Aiki-GeNano</span>
+    <span class="sticky-sub">Aikium · mAbs (submitted, 2026)</span>
+    <a href="mailto:partnerships@aikium.com" class="sticky-action">Partnerships</a>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- HERO -->
+  <div class="hero" id="top">
+    <div class="logo-box"><img src="aikium_logo.png" alt="Aikium logo"></div>
+    <div class="hero-eyebrow">Aikium Inc. · mAbs (submitted, 2026)</div>
+    <h1>Aiki-GeNano</h1>
+    <p class="tagline">A three-stage language-model alignment pipeline (SFT → DPO → GDPO) for target-conditioned nanobody design. Submit a target sequence — a linear peptide, intrinsically-disordered region, or whole soluble domain (e.g. the extracellular domain of a single-pass membrane protein); the model returns ten ranked candidates with developability scores, a multi-sequence alignment against the NBv1 scaffold, and an ESMFold structure prediction for the top-ranked design.</p>
+    <div class="hero-inline-stats">
+      <span><strong>+6.6&nbsp;°C</strong> mean Tm vs SFT</span>
+      <span><strong>65</strong> training targets</span>
+      <span><strong>6</strong> GDPO rewards</span>
+      <span><strong>738&nbsp;M</strong> ProtGPT2</span>
+      <span><strong>126&nbsp;AA</strong> NBv1 backbone</span>
+      <span><strong>1st on Tm + isomerization</strong> vs 5 VHH generators</span>
+    </div>
+  </div>
+
+  <!-- SCAFFOLD LOCK-IN — what the model actually varies -->
+  <div class="scaffold-callout" id="scaffold-callout">
+    <div class="sc-icon">⚙</div>
+    <div class="sc-body">
+      <strong>All generated sequences share a single fixed 126-residue scaffold:</strong> the
+      camelid VHH backbone <strong>cAbBCII10</strong> introduced by
+      <a href="https://doi.org/10.1128/AAC.45.10.2807-2812.2001" target="_blank" rel="noopener">Conrath <em>et&nbsp;al.</em> 2001</a>
+      (referred to throughout as <strong>NBv1</strong>; appears as the <code>NBv1</code> row in the alignment grid below). Training used the synthetic VHH library of
+      <a href="https://doi.org/10.3390/molecules28093703" target="_blank" rel="noopener">Contreras <em>et&nbsp;al.</em> 2023</a>,
+      which randomises only the three complementarity-determining-region loops of NBv1
+      (8&nbsp;positions in CDR1, 4 in CDR2, 10 in CDR3, totalling <strong>22 of 126 positions</strong>).
+      Each generation request therefore returns CDR designs against the submitted
+      target sequence; the framework is not redesigned. Sapiens "humanness" scores
+      consequently reflect the camelid origin of the scaffold rather than a
+      training deficiency. Downstream humanisation (e.g. via
+      <a href="https://www.nature.com/articles/s41551-023-01059-9" target="_blank" rel="noopener">AbNatiV</a>)
+      is treated as a separate step.
+    </div>
+  </div>
+
+  <!-- TRY IT -->
+  <div class="panel" id="try">
+    <div class="panel-eyebrow">Live demo</div>
+    <h2>Generate nanobody candidates for your epitope</h2>
+    <p class="panel-sub">Submit a target sequence (4–244 amino acids; accepts linear peptides, disordered regions, or whole soluble domains — the construct epitope + 30-AA linker + 126-AA binder must fit ESMFold's 400-AA cap). Each request returns ten candidates ranked by the GDPO composite reward (Σ wᵢ·rᵢ), a multi-sequence alignment versus NBv1, and the ESMFold structure of the highest-ranked candidate. Structures for the remaining nine candidates are computed on demand via the <em>Compute structures for all 10</em> control below.</p>
+
+    <p class="examples-hint">Try one of the example targets below. The first three are N-terminal peptide windows of multi-pass GPCRs (the only solvent-exposed handle on those receptors). The fourth is a soluble IgV-like ectodomain of a single-pass membrane protein (PD-L1), illustrating that the model also handles whole domains, not only short peptides.</p>
+    <div class="examples">
+      <button class="example-btn" data-epitope="MNYPLTLEMDLENLEDLFWELDRLDNYNDTSLVENHL">Mu-opioid receptor — N-terminal peptide (P35372)</button>
+      <button class="example-btn" data-epitope="MLSTSRSRFIRNTNESGEEVTTFFDYDYGAPW">CCR2 — N-terminal peptide (P41597)</button>
+      <button class="example-btn" data-epitope="VGSNDIQYEDIKGDMASKLGYFPQKFPLTSFRGSPFQEKMTAW">CB1 — N-terminal peptide (P21554)</button>
+      <button class="example-btn" data-epitope="FTVTVPKDLYVVEYGSNMTIECKFPVEKQLDLAALIVYWEMEDKNIIQFVHGEEDLKVQHSSYRQRARLLKDQLSLGNAALQITDVKLQDAGVYRCMISYGGADYKRITVKVNAPYNK">PD-L1 — IgV-like ectodomain (Q9NZQ7)</button>
+    </div>
+
+    <div class="try-form">
+      <div class="field-row">
+        <span class="field-label">Target</span>
+        <input type="text" id="epitope" class="field-input" placeholder="Linear peptide, IDR, or whole soluble domain (uppercase amino acids)" maxlength="244">
+      </div>
+      <div class="field-row">
+        <span class="field-label">Candidates</span>
+        <input type="number" id="n_candidates" class="field-input" value="10" min="1" max="50" style="max-width:120px;">
+        <span class="field-label" style="min-width: 90px;">Model</span>
+        <select id="model" class="field-input" style="max-width:200px;">
+          <option value="GDPO_DPO" selected>GDPO (DPO init) — paper</option>
+          <option value="GDPO_SFT">GDPO (SFT init) — ablation</option>
+          <option value="DPO">DPO</option>
+          <option value="SFT">SFT</option>
+        </select>
+        <span class="field-label" style="min-width: 80px;">Temp</span>
+        <input type="number" id="temperature" class="field-input" value="0.7" step="0.1" min="0.3" max="1.5" style="max-width:90px;">
+      </div>
+      <div class="field-row">
+        <button id="generate-btn" class="btn-primary">Generate</button>
+        <span id="status"></span>
+      </div>
+    </div>
+
+    <!-- RESULTS WRAPPER -->
+    <div id="results" style="display:none;">
+      <div class="results-meta" id="results-meta"></div>
+
+      <!-- Properties table -->
+      <div style="overflow-x:auto;">
+        <table class="results-table" id="results-table">
+          <thead>
+            <tr>
+              <th>rank</th><th>Sequence</th><th>Valid</th>
+              <th title="Weighted composite reward: the exact objective GDPO was trained to maximise (Σ wᵢ·rᵢ; weights 0.15/0.20/0.25/0.15/0.15/0.10)">composite ↑</th>
+              <th>r1 FR2↑</th><th>r2 hyd-patch↑</th><th>r3 liability↑</th>
+              <th>r4 expr↑</th><th>r5 hallmark↑</th><th>r6 scaffold↑</th>
+              <th>muts vs NBv1</th>
+            </tr>
+          </thead>
+          <tbody id="results-body"></tbody>
+        </table>
+      </div>
+
+      <!-- Multi-sequence alignment -->
+      <div class="alignment-wrap">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <strong style="font-family:'Playfair Display',serif;color:var(--pearl);font-size:1rem;">Multi-sequence alignment of the 10 candidates</strong>
+          <span class="results-meta" id="aln-summary"></span>
+        </div>
+        <div class="alignment-legend">
+          <span><span class="legend-swatch" style="background:rgba(255,255,255,0.03);"></span>identical to NBv1</span>
+          <span><span class="legend-swatch" style="background:rgba(184,138,97,0.30);"></span>1 mutation</span>
+          <span><span class="legend-swatch" style="background:rgba(201,169,97,0.45);"></span>2–3 mutations</span>
+          <span><span class="legend-swatch" style="background:var(--primary-gold);"></span>4+ mutations</span>
+          <span><span class="legend-swatch cdr1" style="background:rgba(47,107,255,0.4);"></span>CDR1 (26–35)</span>
+          <span><span class="legend-swatch cdr2" style="background:rgba(63,185,80,0.4);"></span>CDR2 (54–60)</span>
+          <span><span class="legend-swatch cdr3" style="background:rgba(255,157,138,0.4);"></span>CDR3 (100–110)</span>
+        </div>
+        <div class="alignment-grid" id="alignment-grid"></div>
+      </div>
+
+      <!-- Per-design cards grid -->
+      <div style="margin-top:18px;">
+        <strong style="font-family:'Playfair Display',serif;color:var(--pearl);font-size:1rem;">At-a-glance scorecards</strong>
+        <p class="panel-sub" style="margin-top:4px;">Candidates are sorted by <strong style="color:var(--primary-gold);">composite reward</strong>, the exact weighted objective optimised during the GDPO stage (Σ wᵢ·rᵢ, with weights 0.15, 0.20, 0.25, 0.15, 0.15, 0.10). Candidate #1 has the highest composite in the batch. Click any card to load its structure into the main viewer above; once the deep-dive grid is rendered, its panels are also clickable.</p>
+        <div class="design-grid" id="design-grid"></div>
+      </div>
+
+      <!-- Structure section -->
+      <div class="viewer-shell">
+        <strong style="font-family:'Playfair Display',serif;color:var(--pearl);font-size:1rem;">3D structure of the top-ranked candidate</strong>
+        <p class="panel-sub" style="margin-top:4px;">ESMFold v1 prediction of the concatenated epitope + 30-AA G4S linker + binder construct. Folding runs on the same Modal A10G GPU as the GDPO model (~30–60 s on cold start, ~2 s warm); ESMFold Atlas is used as fallback if the local container is unavailable. The epitope is rendered in muted grey, the linker as a faint line, and the binder coloured by pLDDT (muted, gold-free palette). <strong style="color:var(--primary-gold);">Every position differing from NBv1</strong> is highlighted with a gold cartoon overlay, side-chain sticks, and a small gold sphere on the Cα atom. The viewer auto-loads the highest-composite candidate; any candidate can be loaded by selecting its row in the table, its card above, or its panel in the deep-dive grid below.</p>
+        <div class="viewer-main">
+          <div id="structure-main" class="viewer-box"></div>
+          <div class="viewer-info">
+            <span class="meta" id="struct-meta">Loading top candidate…</span>
+            <span class="legend">
+              <span class="legend-pill"><span class="dot" style="background:#9A9A9A;"></span>epitope</span>
+              <span class="legend-pill"><span class="dot" style="background:#4A4A4A;"></span>linker</span>
+              <span class="legend-pill"><span class="dot" style="background:#3A7DA8;"></span>pLDDT ≥ 90</span>
+              <span class="legend-pill"><span class="dot" style="background:#558379;"></span>≥ 70</span>
+              <span class="legend-pill"><span class="dot" style="background:#8A8F95;"></span>≥ 50</span>
+              <span class="legend-pill"><span class="dot" style="background:#B85551;"></span>< 50</span>
+              <span class="legend-pill"><span class="dot" style="background:var(--primary-gold);"></span>mutation (cartoon + CA + side-chain stick)</span>
+            </span>
+          </div>
+        </div>
+        <div class="caveat">Note: ESMFold predicts a single chain rather than performing protein–protein docking. Folding the concatenated <code>epitope + 30-AA G4S linker + binder</code> construct yields an informative low-resolution view of the co-folded complex. The binder fold, CDR-loop geometry, and CDR-to-epitope proximity can be assessed within ESMFold's known accuracy limits. The predicted relative orientation of binder and epitope across the flexible linker carries additional uncertainty and should not be over-interpreted as a fixed bound geometry.</div>
+
+        <div class="deep-dive-row">
+          <button id="deepdive-btn" class="btn-secondary">Compute structures for all 10 →</button>
+          <span id="deepdive-status" class="results-meta"></span>
+        </div>
+        <div class="viewer-grid" id="viewer-grid" style="display:none;"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <div class="panel" id="how">
+    <div class="panel-eyebrow">Methodology</div>
+    <h2>Three stages of language-model alignment</h2>
+    <p class="panel-sub">Built on ProtGPT2 (738 M parameters), each stage tightens the output distribution toward the developability frontier.</p>
+    <div class="stages-grid">
+      <div class="stage-card"><div class="stage-num">1</div><h3>SFT</h3><p>Supervised fine-tuning on 1.35 M nanobody–epitope pairs across 65 targets establishes the binding-compatible sequence prior.</p></div>
+      <div class="stage-card"><div class="stage-num">2</div><h3>DPO</h3><p>Direct Preference Optimisation on 522,800 preference pairs ranked by composite developability (Tm + solubility + humanness).</p></div>
+      <div class="stage-card"><div class="stage-num">3</div><h3>GDPO</h3><p>Group Reward-Decoupled Policy Optimisation against six mechanistic rewards (FR2 hydrophobicity, hydrophobic patches, chemical-liability motifs, expression, VHH hallmark, scaffold integrity).</p></div>
+    </div>
+  </div>
+
+  <!-- LIMITS -->
+  <div class="panel" id="limits">
+    <div class="panel-eyebrow">Where it works</div>
+    <h2>Known limits of this release</h2>
+    <p class="panel-sub">An explicit statement of where this release is and is not appropriate, prior to use.</p>
+    <div class="limits-grid">
+      <div class="limit-card works"><div class="label">Works well</div><p>Linear peptides, intrinsically-disordered regions, and soluble domains resembling the 65 training targets. The training set spans both short peptide windows (e.g. multi-pass receptor N-termini) and whole soluble extracellular domains of single-pass membrane proteins. On a shared 10-target GPCR cohort, Aiki-GeNano achieves the highest predicted Tm and the lowest isomerization severity among five contemporary VHH generators (nanoBERT, IgLM, NanoAbLLaMA, ProteinDPO, IgGM). Tm, solubility, and chemical-liability scores are predicted, not assayed.</p></div>
+      <div class="limit-card care"><div class="label">Use with care</div><p>Targets that diverge in length or composition from the 65-target cohort, very long domains approaching ESMFold's 400-AA cap, and targets dominated by transmembrane segments. Generated sequences cluster within ≈8 amino acids of the closest training sequence (BLAST 92.8–93.6 % identity).</p></div>
+      <div class="limit-card skip"><div class="label">Will not work</div><p>Generated sequences have not been wet-lab validated for binding, expression yield, or developability. Use as a candidate-ranking tool, not a clinical pipeline.</p></div>
+    </div>
+  </div>
+
+  <!-- ABSTRACT + GLOSSARY -->
+  <div class="panel" id="abstract">
+    <div class="panel-eyebrow">From the paper</div>
+    <h2>Abstract</h2>
+    <p class="panel-sub">From the mAbs (submitted) manuscript, verbatim.</p>
+    <blockquote class="paper-abstract">
+      <p>Therapeutic nanobodies must combine target binding with biophysical and chemical properties that determine manufacturability, stability, and clinical viability, collectively termed <strong>developability</strong>, yet most computational design pipelines still treat developability as a post-hoc filter rather than an integrated training objective.</p>
+      <p>We present <strong>Aiki-GeNano</strong>, a three-stage language-model alignment pipeline for epitope-conditioned nanobody generation that integrates multiple developability signals directly into training, using only sequence information and previously published predictors. Starting from <strong>ProtGPT2</strong>, we perform supervised fine-tuning on 1.35&nbsp;million nanobody–epitope pairs across 65 target epitopes generated on an mRNA-display platform, apply <strong>Direct Preference Optimization</strong> on 522,800 pairs ranked by a composite of selectivity, predicted thermal stability, solubility, and humanness, and apply <strong>Group Reward-Decoupled Policy Optimization (GDPO)</strong> against six sequence-based rewards covering FR2 hydrophobicity, hydrophobic-patch coverage, chemical-liability motifs, Wilkinson–Harrison expression probability, VHH hallmark residues, and scaffold integrity.</p>
+      <p>Across 65 targets and relative to the supervised baseline, the combined pipeline increased predicted mean melting temperature by <strong>6.6&nbsp;°C</strong>, reduced deamidation and isomerization motif severity, decreased the occurrence of N-glycosylation sequons and CDR methionine-oxidation motifs, and preserved predicted humanness and solubility. Generated sequences differed from the nearest training sequence by a mean of <strong>8.1–9.0 amino acids out of 126</strong>. Two alternative training trajectories produced distinct amino-acid-composition strategies with similar liability outcomes but different thermal-stability gains, indicating initialization-dependent convergence of the reward-optimized policy. <strong>On a shared 10-target GPCR benchmark, the pipeline achieved the highest predicted melting temperature and lowest isomerization severity among five contemporary VHH generators.</strong></p>
+    </blockquote>
+
+    <span class="glossary-toggle" id="glossary-toggle">▸ Glossary of terms used on this page</span>
+    <dl class="glossary" id="glossary">
+      <dt>VHH / Nanobody</dt>
+      <dd>The antigen-binding variable domain of a heavy-chain-only antibody, found naturally in camelids (llamas, alpacas) and sharks. ~13 kDa, single-domain, three CDR loops, no light chain. Used as a small, stable binding scaffold.</dd>
+
+      <dt>NBv1 (cAbBCII10)</dt>
+      <dd>The 126-residue camelid VHH backbone of <a href="https://doi.org/10.1128/AAC.45.10.2807-2812.2001" target="_blank" rel="noopener">Conrath <em>et&nbsp;al.</em> 2001</a>. The fixed scaffold this model varies CDRs within. The row labelled <code>NBv1</code> in the alignment grid is this exact 126-AA reference.</dd>
+
+      <dt>CDR1 / CDR2 / CDR3</dt>
+      <dd>The three Complementarity-Determining Regions: the short loops at the tip of the antibody that contact the antigen. In NBv1 they occupy positions 26–35, 54–60, and 100–110 (8, 4, and 10 randomised residues in the Contreras library, respectively); everything else is framework.</dd>
+
+      <dt>Framework / FR2</dt>
+      <dd>The non-loop residues that hold the CDRs in position. <strong>FR2</strong> is the second framework segment (positions 36–53 in NBv1). VHHs have a characteristic FR2 tetrad of hydrophilic residues that compensates for the absent light chain (the "VHH hallmark").</dd>
+
+      <dt>SFT / DPO / GDPO</dt>
+      <dd><strong>SFT</strong> = supervised fine-tuning on epitope→nanobody pairs. <strong>DPO</strong> = Direct Preference Optimization on (preferred, dispreferred) pairs ranked by a developability composite. <strong>GDPO</strong> = NVIDIA's Group Reward-Decoupled Policy Optimization, an extension of GRPO that learns from per-attribute rewards rather than a single scalar.</dd>
+
+      <dt>Composite reward</dt>
+      <dd>The weighted sum the GDPO stage was trained to maximise: <code>0.15·r1 + 0.20·r2 + 0.25·r3 + 0.15·r4 + 0.15·r5 + 0.10·r6</code>, with the weights fixed in <code>configs/gdpo/final_sft_gdpo_gated.yaml</code>. Each rᵢ is in [0,1] (gated to 0 for invalid sequences), so the composite is also in [0,1].</dd>
+
+      <dt>r1–r6</dt>
+      <dd><strong>r1</strong> FR2 aggregation (Kyte–Doolittle hydrophobicity over FR2). <strong>r2</strong> Hydrophobic-patch coverage. <strong>r3</strong> Chemical-liability motifs (deamidation, isomerization, N-glycosylation, oxidation, etc.). <strong>r4</strong> Wilkinson–Harrison <em>E. coli</em> expression probability. <strong>r5</strong> VHH hallmark tetrad (Muyldermans 2013). <strong>r6</strong> Scaffold integrity, defined as length + cysteine count + linker; the only ungated reward.</dd>
+
+      <dt>pLDDT</dt>
+      <dd>Per-residue confidence score from ESMFold/AlphaFold-style models, 0–100. Values ≥ 90 = very high confidence in the local structure; 70–89 = confident; 50–69 = low; &lt; 50 = very low (typically flexible/disordered regions or termini).</dd>
+
+      <dt>ESMFold + the linker caveat</dt>
+      <dd><a href="https://www.science.org/doi/10.1126/science.ade2574" target="_blank" rel="noopener">ESMFold v1</a> predicts the structure of a single polypeptide chain from sequence alone. To visualise the binder in the context of the epitope, the concatenated construct <code>epitope + 30-AA G4S linker + binder</code> is submitted as a single chain. The model runs locally on the same Modal A10G GPU that hosts the GDPO checkpoint; ESMFold Atlas is used as a fallback. The result is a low-resolution co-folded view, informative for the binder's intrinsic fold quality, CDR-loop geometry, and CDR-to-epitope proximity, within ESMFold's known accuracy limits (which are higher for single domains than for engineered fusions). The flexible 30-residue G4S linker adds further uncertainty to the predicted relative orientation of binder and epitope, so this view should be read as an assessment rather than as a definitive docked complex.</dd>
+
+      <dt>NetSolP / TEMPRO / Sapiens / Biopython</dt>
+      <dd>The four external predictors used as ground-truth signals during training and as evaluation tools. <strong>TEMPRO</strong> = nanobody Tm. <strong>NetSolP-1.0</strong> = solubility. <strong>Sapiens</strong> = humanness (this scaffold is camelid, so values reflect that; see the scaffold callout above). <strong>Biopython ProteinAnalysis</strong> = pI, instability, GRAVY, etc.</dd>
+    </dl>
+  </div>
+
+  <!-- REPRO -->
+  <div class="panel" id="repro">
+    <div class="panel-eyebrow">Reproducibility</div>
+    <h2>Paper, code, data, and container image</h2>
+    <p class="panel-sub">Everything needed to verify the paper's numerical claims and to run the same pipeline locally on a GPU.</p>
+    <div class="repro-grid">
+      <div class="repro-card"><div class="label">Paper</div><a href="https://www.tandfonline.com/journals/kmab20">Meda et&nbsp;al., mAbs (submitted, 2026)</a><span class="desc">Preprint forthcoming on bioRxiv.</span></div>
+      <div class="repro-card"><div class="label">Source code</div><a href="https://github.com/aikium-public/aiki-genano">github.com/aikium-public/aiki-genano</a><span class="desc">MIT licence. Training, inference, evaluation, analysis notebooks.</span></div>
+      <div class="repro-card"><div class="label">Docker image</div><a href="https://github.com/aikium-public/aiki-genano/pkgs/container/aiki-genano"><code>ghcr.io/aikium-public/aiki-genano:1.0.0</code></a><span class="desc">CUDA 12.1 + PyTorch 2.2 + TRL-GDPO. Runs end-to-end with <code>--gpus all</code>.</span></div>
+      <div class="repro-card"><div class="label">Figure data + property tables</div><a href="https://doi.org/10.5281/zenodo.19757843">Zenodo · 10.5281/zenodo.19757843</a><span class="desc">CC-BY-NC-4.0. All numerical figure data; per-sequence properties for the 10 disclosed targets (sequences stripped).</span></div>
+    </div>
+  </div>
+
+  <!-- CREDITS -->
+  <div class="panel" id="credits">
+    <div class="panel-eyebrow">Acknowledgements</div>
+    <h2>Foundation models, predictors, and infrastructure</h2>
+    <p class="panel-sub">Aiki-GeNano would not exist without the models, datasets, and tools released by these teams. If you build on top of Aiki-GeNano, please cite them too.</p>
+    <div class="credits-grid">
+      <div class="credits-col"><div class="credits-label">Foundation models</div><ul>
+        <li><a href="https://huggingface.co/nferruz/ProtGPT2">ProtGPT2</a> — Ferruz et al. (Apache 2.0)</li>
+        <li><a href="https://huggingface.co/facebook/esm2_t33_650M_UR50D">ESM-2 650M</a> — Lin et al. (MIT)</li>
+        <li><a href="https://github.com/Merck/Sapiens">Sapiens</a> — Prihoda et al. (MIT)</li>
+      </ul></div>
+      <div class="credits-col"><div class="credits-label">Predictors &amp; structure</div><ul>
+        <li><a href="https://github.com/JaredAlvarez/TEMPRO">TEMPRO</a> — Alvarez 2024 (MIT)</li>
+        <li><a href="https://services.healthtech.dtu.dk/services/NetSolP-1.0/">NetSolP-1.0</a> — Thumuluri 2022 (academic)</li>
+        <li>Therapeutic Nanobody Profiler — Gordon, Gervasio, Souders, Deane 2026 (Oxford OPIG); cited in the paper for nanobody-specific developability framing.</li>
+        <li><a href="https://huggingface.co/facebook/esmfold_v1">ESMFold v1</a> — Lin, Akin, Rao, Hie, Zhu, Lu, Smetanin, Verkuil, Kabeli, Shmueli, Fazel-Zarandi, Sercu, Candido, Rives <em>et al.</em> (Meta FAIR / EvolutionaryScale). The model is run locally on the Modal A10G GPU; <a href="https://esmatlas.com/">ESMFold Atlas</a> (hosted by EvolutionaryScale) serves as the fallback if the local container is unavailable.</li>
+      </ul></div>
+      <div class="credits-col"><div class="credits-label">Training framework</div><ul>
+        <li><a href="https://github.com/huggingface/trl">TRL</a> + <a href="https://github.com/NVlabs/GDPO">NVIDIA GDPO fork</a> (Apache 2.0)</li>
+        <li><a href="https://github.com/huggingface/transformers">transformers, peft, accelerate</a> (Apache 2.0)</li>
+        <li><a href="https://3dmol.csb.pitt.edu/">3Dmol.js</a> (BSD-3) · <a href="https://modal.com">Modal</a> (hosting)</li>
+      </ul></div>
+    </div>
+    <p class="credits-note">Each upstream model and dataset retains its own licence. Users deploying Aiki-GeNano, its outputs, or derived sequences in their own workflows are responsible for complying with the respective upstream terms; follow the links above for each. The Aiki-GeNano source code is MIT-licensed; the figure-data Zenodo deposit is CC-BY-NC-4.0; the trained model checkpoints are proprietary to Aikium Inc. and available under NDA via <a href="mailto:partnerships@aikium.com">partnerships@aikium.com</a>.</p>
+  </div>
+
+  <!-- PARTNER CTA -->
+  <div class="partner-cta">
+    <h3>Custom design campaigns and licensed deployments</h3>
+    <p>This public demonstrator runs the GDPO (DPO-initialised) checkpoint at 10 requests per hour per IP. Aikium offers higher-throughput inference, target-specific design campaigns, evaluation-only deployments, and licensed access to the trained checkpoints under non-disclosure agreement. Inquiries are welcome.</p>
+    <a href="mailto:partnerships@aikium.com?subject=Aiki-GeNano%20partnership%20inquiry">Contact partnerships@aikium.com</a>
+  </div>
+
+  <div class="footer">
+    <div class="footer-links">
+      <a href="https://github.com/aikium-public/aiki-genano">GitHub</a>
+      <a href="https://doi.org/10.5281/zenodo.19757843">Zenodo</a>
+      <a href="https://github.com/aikium-public/aiki-genano/pkgs/container/aiki-genano">Docker</a>
+      <a href="https://www.aikium.com">Aikium</a>
+      <a href="mailto:partnerships@aikium.com">Partnerships</a>
+      <a href="mailto:careers@aikium.com">Careers</a>
+    </div>
+    <div class="footer-mini">© 2026 Aikium, Inc. · Code MIT · Figure data CC-BY-NC-4.0 · Trained models proprietary</div>
+  </div>
+
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+/* =========================================================================
+   GLOBAL STATE
+   ========================================================================= */
+// NBv1 canonical reference scaffold (126 AA, ends in GGGGS spacer).
+// Mirrors aiki_genano/rewards/nanobody_scaffold.py NB_V1_REFERENCE so
+// "mutations vs ref" reads against a fixed scaffold rather than a
+// drifting within-batch consensus.
+const NBV1_REF = 'QVQLVESGGGSVQAGGSLRLSCTASGGSEYSYSTFSLGWFRQAPGQEREAVAAIASMGGLTYYADSVKGRFTISRDNAKNTVTLQMNNLKPVDTAIYYCAAVRGYFMRLPSWGQGTQVTVSGGGGS';
+
+const STATE = {
+  epitope: '',
+  model: 'GDPO_DPO',
+  candidates: [],            // [{generated_sequence, is_valid_126, reward_*, ...}]
+  reference: NBV1_REF,       // fixed 126-AA reference (NBv1)
+  perPosMutCount: [],        // length-126 array, # of mutations across the batch at each position vs NBv1
+  selectedIdx: 0,            // currently focused design
+  structures: {},            // {idx: {pdb, epitope_resi, linker_resi, binder_resi, pLDDT_mean, ...}}
+  mainViewer: null,
+  miniViewers: {},
+};
+
+// (label, JSON key, training weight). Weights mirror configs/gdpo/*.yaml
+// reward_weights = [0.15, 0.20, 0.25, 0.15, 0.15, 0.10] — the composite
+// these sum to is the exact objective GDPO was trained to maximise.
+const REWARD_KEYS = [
+  ['r1', 'reward_fr2_aggregation',  0.15],
+  ['r2', 'reward_hydrophobic_patch', 0.20],
+  ['r3', 'reward_liability',         0.25],
+  ['r4', 'reward_expression',        0.15],
+  ['r5', 'reward_vhh_hallmark',      0.15],
+  ['r6', 'reward_scaffold_integrity', 0.10],
+];
+
+function compositeReward(c) {
+  let s = 0;
+  for (const [, key, w] of REWARD_KEYS) {
+    const v = c[key];
+    if (v === null || v === undefined || Number.isNaN(v)) continue;
+    s += w * v;
+  }
+  return s; // already in [0, 1] since weights sum to 1
+}
+
+// CDR ranges, 0-indexed inclusive end-exclusive (matches NBV1 scaffold)
+const CDR_RANGES = { CDR1: [25, 36], CDR2: [53, 61], CDR3: [99, 111] };
+
+/* =========================================================================
+   HELPERS
+   ========================================================================= */
+function fmt(n) { if (n === null || n === undefined || Number.isNaN(n)) return '—'; return Number(n).toFixed(3); }
+
+function scoreClass(v) {
+  if (v === null || v === undefined || Number.isNaN(v)) return '';
+  if (v >= 0.7) return 'good';
+  if (v >= 0.4) return 'ok';
+  return 'bad';
+}
+
+// pLDDT palette deliberately excludes yellow/gold so it cannot be confused
+// with mutation gold (#C9A961). Blue (high) -> teal -> dove-grey (medium)
+// -> coral-red (low). Same tiering thresholds as AlphaFold convention.
+function plddtColor(pct) {
+  if (pct >= 90) return '#3A7DA8';   // very high, muted steel-blue
+  if (pct >= 70) return '#558379';   // confident, muted teal (toned down from #5AB6B0)
+  if (pct >= 50) return '#8A8F95';   // low confidence, dove grey (NOT amber)
+  return '#B85551';                   // very low, brick red (muted)
+}
+
+/* =========================================================================
+   ALIGNMENT — per-position mutation count vs the FIXED NBv1 reference
+   (NOT a within-batch consensus, which would shift every regeneration)
+   ========================================================================= */
+function computeMutCounts(seqs, ref) {
+  const L = ref.length;
+  const perPosMut = new Array(L).fill(0);
+  for (let pos = 0; pos < L; pos++) {
+    let n = 0;
+    for (const s of seqs) {
+      if ((s[pos] || '-') !== ref[pos]) n++;
+    }
+    perPosMut[pos] = n;
+  }
+  return perPosMut;
+}
+
+function mutationsVsRef(seq, ref) {
+  const muts = [];
+  for (let i = 0; i < ref.length; i++) {
+    if (seq[i] !== ref[i]) muts.push(i); // 0-indexed within binder
+  }
+  return muts;
+}
+
+// Subset of mutations that fall inside CDR1/CDR2/CDR3. Used for the structure
+// highlighter — framework variation is real but binding-irrelevant noise on
+// the 3D view. The alignment grid still shows ALL mutations vs NBv1.
+function inCDR(p) {
+  return (p >= CDR_RANGES.CDR1[0] && p < CDR_RANGES.CDR1[1])
+      || (p >= CDR_RANGES.CDR2[0] && p < CDR_RANGES.CDR2[1])
+      || (p >= CDR_RANGES.CDR3[0] && p < CDR_RANGES.CDR3[1]);
+}
+function cdrMutationsVsRef(seq, ref) {
+  return mutationsVsRef(seq, ref).filter(inCDR);
+}
+
+/* =========================================================================
+   RENDER — properties table
+   ========================================================================= */
+function renderTable() {
+  const body = $('results-body');
+  body.innerHTML = '';
+  STATE.candidates.forEach((c, i) => {
+    const tr = document.createElement('tr');
+    tr.dataset.idx = i;
+    if (i === STATE.selectedIdx) tr.classList.add('selected');
+    const validClass = c.is_valid_126 ? 'valid' : 'invalid';
+    const validText = c.is_valid_126 ? '✓' : '✗';
+    const muts = mutationsVsRef(c.generated_sequence, STATE.reference);
+    let cells = `<td>${i + 1}</td><td class="seq">${c.generated_sequence.slice(0, 28)}…</td><td class="${validClass}">${validText}</td>`;
+    cells += `<td><span class="score-cell composite ${scoreClass(c.composite)}">${fmt(c.composite)}</span></td>`;
+    for (const [k, key] of REWARD_KEYS) {
+      const v = c[key];
+      cells += `<td><span class="score-cell ${scoreClass(v)}">${fmt(v)}</span></td>`;
+    }
+    cells += `<td>${muts.length}</td>`;
+    tr.innerHTML = cells;
+    tr.addEventListener('click', () => selectDesign(i));
+    body.appendChild(tr);
+  });
+}
+
+/* =========================================================================
+   RENDER — alignment grid
+   ========================================================================= */
+function regionForPos(pos) {
+  if (pos >= CDR_RANGES.CDR1[0] && pos < CDR_RANGES.CDR1[1]) return 'cdr1';
+  if (pos >= CDR_RANGES.CDR2[0] && pos < CDR_RANGES.CDR2[1]) return 'cdr2';
+  if (pos >= CDR_RANGES.CDR3[0] && pos < CDR_RANGES.CDR3[1]) return 'cdr3';
+  return null;
+}
+
+function renderAlignment() {
+  const grid = $('alignment-grid');
+  grid.innerHTML = '';
+
+  // Region row at top
+  const regionRow = document.createElement('div');
+  regionRow.className = 'aln-region';
+  regionRow.innerHTML = '<span></span><span></span>' +
+    Array.from({length: 126}, (_, p) => {
+      const r = regionForPos(p);
+      const tick = (p % 10 === 0) ? String(p) : '';
+      return `<span class="${r || ''}">${tick}</span>`;
+    }).join('');
+  grid.appendChild(regionRow);
+
+  // NBv1 reference row (fixed scaffold)
+  const refRow = document.createElement('div');
+  refRow.className = 'aln-row';
+  refRow.innerHTML = `<span class="aln-rownum" style="font-weight:700;color:var(--champagne);">NBv1</span><span class="aln-flag"></span>` +
+    Array.from(STATE.reference, ch => `<span class="aln-cell consensus">${ch}</span>`).join('');
+  grid.appendChild(refRow);
+
+  // Per-sequence rows (mutations are vs the fixed NBv1 reference)
+  STATE.candidates.forEach((c, i) => {
+    const row = document.createElement('div');
+    row.className = 'aln-row';
+    let html = `<span class="aln-rownum">#${i + 1}</span><span class="aln-flag" style="color:${c.is_valid_126 ? 'var(--emerald)' : 'var(--burgundy)'};">${c.is_valid_126 ? '✓' : '✗'}</span>`;
+    for (let p = 0; p < 126; p++) {
+      const ch = c.generated_sequence[p] || '-';
+      const isMut = ch !== STATE.reference[p];
+      let cls = 'aln-cell';
+      if (isMut) {
+        const n = STATE.perPosMut[p];
+        cls += n <= 1 ? ' mut1' : (n <= 3 ? ' mut2' : ' mut3');
+      } else {
+        cls += ' consensus';
+      }
+      html += `<span class="${cls}">${ch}</span>`;
+    }
+    row.innerHTML = html;
+    grid.appendChild(row);
+  });
+
+  // Summary
+  const totalMut = STATE.perPosMut.filter(n => n > 0).length;
+  const cdrMut = STATE.perPosMut.reduce((acc, n, p) => acc + (n > 0 && regionForPos(p) ? 1 : 0), 0);
+  $('aln-summary').textContent = `${totalMut} variable positions across the batch (${cdrMut} in CDRs); reference: NBv1`;
+}
+
+/* =========================================================================
+   RENDER — design cards grid
+   ========================================================================= */
+function renderDesignCards() {
+  const grid = $('design-grid');
+  grid.innerHTML = '';
+  STATE.candidates.forEach((c, i) => {
+    const card = document.createElement('div');
+    card.className = 'design-card' + (i === STATE.selectedIdx ? ' selected' : '');
+    card.dataset.idx = i;
+    const muts = mutationsVsRef(c.generated_sequence, STATE.reference);
+
+    let bars = '';
+    // Composite first (the GDPO objective), gold-emphasised so it draws the eye.
+    const compPct = Math.max(0, Math.min(100, c.composite * 100));
+    bars += `<div class="bar-row composite-row">
+      <span class="bar-name">comp</span>
+      <span class="bar-track"><span class="bar-fill composite-fill" style="width:${compPct}%;"></span></span>
+      <span class="bar-val">${c.composite.toFixed(2)}</span>
+    </div>`;
+    for (const [name, key] of REWARD_KEYS) {
+      const v = c[key];
+      if (v === null || v === undefined || Number.isNaN(v)) continue;
+      // Zero rewards get a thin neutral marker (not red) so the user can tell
+      // the bar IS rendered — empty red looked broken in early screenshots.
+      const cls = (v === 0) ? 'zero' : scoreClass(v);
+      const pct = Math.max(0, Math.min(100, v * 100));
+      bars += `<div class="bar-row">
+        <span class="bar-name">${name}</span>
+        <span class="bar-track"><span class="bar-fill ${cls}" style="width:${pct}%;"></span></span>
+        <span class="bar-val">${v.toFixed(2)}</span>
+      </div>`;
+    }
+    card.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span class="num">#${i + 1}</span>
+        <div class="badges">
+          <span class="dc-badge ${c.is_valid_126 ? 'valid' : 'invalid'}">${c.is_valid_126 ? 'valid 126' : 'invalid'}</span>
+        </div>
+      </div>
+      <div class="bars">${bars}</div>
+      <div class="mutbar">${muts.length} mutations vs NBv1</div>
+    `;
+    card.addEventListener('click', () => selectDesign(i));
+    grid.appendChild(card);
+  });
+}
+
+/* =========================================================================
+   STRUCTURE — fetch via /api/structure, render with 3Dmol
+   ========================================================================= */
+async function fetchStructure(idx) {
+  if (STATE.structures[idx]) return STATE.structures[idx];
+  const c = STATE.candidates[idx];
+  const r = await fetch('/api/structure', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ epitope: STATE.epitope, binder: c.generated_sequence }),
+  });
+  if (r.status === 429) {
+    const j = await r.json();
+    throw new Error(`Rate limit (${j.limit_per_hour}/hr). ${j.next_step || ''}`);
+  }
+  if (!r.ok) {
+    const txt = await r.text();
+    throw new Error(`HTTP ${r.status}: ${txt.slice(0, 200)}`);
+  }
+  const data = await r.json();
+  STATE.structures[idx] = data;
+  return data;
+}
+
+function renderStructureViewer(elementId, struct, mutationResi, height) {
+  const el = document.getElementById(elementId);
+  if (!el) return null;
+  el.innerHTML = '';
+  if (height) el.style.height = height + 'px';
+  const v = $3Dmol.createViewer(el, { backgroundColor: '0x0F0F0F' });
+  v.addModel(struct.pdb, 'pdb');
+
+  // Default: hide everything
+  v.setStyle({}, {});
+
+  // Epitope = grey cartoon
+  v.setStyle({resi: `${struct.epitope_resi[0]}-${struct.epitope_resi[1]}`}, {
+    cartoon: { color: '0x9A9A9A', opacity: 0.85 }
+  });
+  // Linker = thin grey line
+  v.setStyle({resi: `${struct.linker_resi[0]}-${struct.linker_resi[1]}`}, {
+    line: { color: '0x4A4A4A', opacity: 0.5 }
+  });
+  // Binder = cartoon coloured by pLDDT. Server normalises B-factor to a
+  // uniform 0–100 scale across both folding paths (local ESMFold v1 on the
+  // Modal A10G, and ESMFold Atlas fallback), so atom.b is the per-residue
+  // pLDDT directly. Palette is deliberately gold-free so it cannot be
+  // confused with the gold mutation overlay (see plddtColor).
+  v.setStyle({resi: `${struct.binder_resi[0]}-${struct.binder_resi[1]}`}, {
+    cartoon: { colorfunc: (atom) => plddtColor(atom.b || 0) }
+  });
+
+  // Mutation overlay vs the fixed NBv1 reference. mutationResi is 0-indexed
+  // within the binder; the binder starts at PDB residue binder_resi[0]. Pass
+  // resi as an ARRAY of integers (not a comma-joined string) and NEVER use
+  // `invert: true` (it inverts the WHOLE selector, not just the atom
+  // subselection — that lit up the entire binder in v1.2/v1.3).
+  if (mutationResi && mutationResi.length) {
+    const binderStart = struct.binder_resi[0];
+    const mutPDB = mutationResi.map(i => binderStart + i);
+    // Include CA along with the side-chain heavy atoms so 3Dmol draws the
+    // CA-CB bond (sticks only render bonds between atoms BOTH present in
+    // the selection — without CA the side-chain floats unconnected). N, C,
+    // and O are still excluded so the polypeptide backbone bond doesn't
+    // bleed into neighbouring residues.
+    const SIDECHAIN_PLUS_CA = ['CA','CB','CG','CG1','CG2','CD','CD1','CD2','CE','CE1','CE2','CE3',
+                       'CZ','CZ2','CZ3','CH2','ND1','ND2','NE','NE1','NE2','NH1','NH2','NZ',
+                       'OD1','OD2','OE1','OE2','OG','OG1','OH','SD','SG'];
+    // (1) Gold cartoon at mutation residues — backbone-readable marker.
+    v.addStyle({resi: mutPDB}, {
+      cartoon: { color: '0xC9A961', thickness: 0.55, opacity: 1.0 }
+    });
+    // (2) CA + side-chain sticks at mutation residues — full residue identity.
+    v.addStyle({resi: mutPDB, atom: SIDECHAIN_PLUS_CA}, {
+      stick: { color: '0xC9A961', radius: 0.20 }
+    });
+    // (3) Small gold sphere on each CA so the position is unambiguous even
+    //     for Gly (no side-chain) or when the side-chain points away.
+    v.addStyle({resi: mutPDB, atom: 'CA'}, {
+      sphere: { color: '0xC9A961', radius: 0.35 }
+    });
+  }
+
+  v.zoomTo();
+  v.render();
+  v.zoom(1.05);
+  return v;
+}
+
+function sourceLabel(src) {
+  if (src === 'local-esmfold-v1') return 'local ESMFold v1 (Modal A10G)';
+  if (src === 'esmatlas-fallback') return 'ESMFold Atlas (fallback)';
+  if (src === 'esmatlas') return 'ESMFold Atlas';
+  return src || 'ESMFold';
+}
+
+async function loadMainStructure(idx) {
+  const meta = $('struct-meta');
+  meta.innerHTML = `Folding candidate <strong>#${idx + 1}</strong> via local ESMFold v1 on a Modal A10G… (~30–60 s on cold start, ~2 s warm)`;
+  try {
+    const struct = await fetchStructure(idx);
+    const muts = mutationsVsRef(STATE.candidates[idx].generated_sequence, STATE.reference);
+    const cdrCount = muts.filter(inCDR).length;
+    STATE.mainViewer = renderStructureViewer('structure-main', struct, muts, 460);
+    const conf = struct.pLDDT_mean >= 90 ? 'very high' : struct.pLDDT_mean >= 70 ? 'confident' : struct.pLDDT_mean >= 50 ? 'low' : 'very low';
+    const sourceTag = struct.cached
+      ? '<span style="color:var(--dove-grey);">cached</span>'
+      : `<span style="color:var(--dove-grey);">${sourceLabel(struct.source)}</span>`;
+    meta.innerHTML = `Candidate <strong>#${idx + 1}</strong> · ${struct.total_len} AA total (${struct.epitope_len} epitope + ${struct.linker_len} linker + ${struct.binder_len} binder) · mean pLDDT <strong>${struct.pLDDT_mean.toFixed(1)}</strong> (${conf}) · ${struct.latency_s}s · ${sourceTag} · <span style="color:var(--primary-gold);">${muts.length} mutations vs NBv1</span> (${cdrCount} in CDRs)`;
+  } catch (e) {
+    const isTimeout = /504|timeout|Gateway/i.test(e.message || '');
+    const note = isTimeout
+      ? 'ESMFold Atlas is busy or timed out (transient).'
+      : 'Structure prediction failed.';
+    meta.innerHTML = `<span style="color:var(--burgundy);">${note}</span> <a href="#" id="struct-retry" style="color:var(--champagne);text-decoration:underline;">Retry</a> <span style="color:var(--dove-grey);font-size:0.78rem;">(${(e.message || '').slice(0, 80)})</span>`;
+    const retry = document.getElementById('struct-retry');
+    if (retry) retry.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      delete STATE.structures[idx];
+      loadMainStructure(idx);
+    });
+  }
+}
+
+async function deepDive() {
+  const btn = $('deepdive-btn');
+  const status = $('deepdive-status');
+  btn.disabled = true;
+  const grid = $('viewer-grid');
+  grid.style.display = 'grid';
+  grid.innerHTML = '';
+
+  // Pre-create cards so user sees the layout immediately. Each card is
+  // clickable: clicking promotes that candidate to the main viewer above
+  // (and re-syncs the table + design-card highlights via selectDesign).
+  STATE.candidates.forEach((c, i) => {
+    const card = document.createElement('div');
+    card.className = 'viewer-card';
+    card.dataset.idx = i;
+    card.title = `Click to load #${i + 1} into the main viewer above`;
+    card.innerHTML = `
+      <div id="mini-${i}" class="viewer-mini"></div>
+      <div class="vc-foot">
+        <span class="vc-num">#${i + 1}</span>
+        <span class="vc-plddt" id="mini-meta-${i}">queued…</span>
+      </div>`;
+    card.addEventListener('click', () => {
+      selectDesign(i);
+      // Smooth-scroll the main viewer back into view since the user is
+      // currently looking at the grid below it.
+      document.getElementById('structure-main').scrollIntoView({
+        behavior: 'smooth', block: 'center'
+      });
+    });
+    grid.appendChild(card);
+  });
+
+  // Throttled pump: at most CONCURRENCY simultaneous /api/structure calls.
+  // Hammering ESMFold Atlas with 10 parallel requests reliably triggers
+  // 504 Gateway Timeouts. Three-at-a-time keeps Atlas happy and still
+  // finishes the batch in roughly the same wall-clock time.
+  const CONCURRENCY = 3;
+  let done = 0;
+  let next = 0;
+  const total = STATE.candidates.length;
+
+  async function foldOne(i) {
+    const c = STATE.candidates[i];
+    try {
+      $(`mini-meta-${i}`).textContent = 'folding…';
+      const struct = await fetchStructure(i);
+      const muts = mutationsVsRef(c.generated_sequence, STATE.reference);
+      STATE.miniViewers[i] = renderStructureViewer(`mini-${i}`, struct, muts, 220);
+      const cachedTag = struct.cached ? ' · <span style="color:var(--dove-grey);">cached</span>' : '';
+      $(`mini-meta-${i}`).innerHTML = `pLDDT <strong>${struct.pLDDT_mean.toFixed(1)}</strong> · <span style="color:var(--primary-gold);">${muts.length} muts</span>${cachedTag}`;
+    } catch (e) {
+      const short = (e.message || 'unknown').replace(/^HTTP \d+:\s*/, '').slice(0, 60);
+      $(`mini-meta-${i}`).innerHTML = `<span style="color:var(--burgundy);">${short}</span> <a href="#" class="mini-retry" data-i="${i}" style="color:var(--champagne);text-decoration:underline;margin-left:6px;">retry</a>`;
+    } finally {
+      done += 1;
+      status.textContent = `${done}/${total} structures rendered`;
+    }
+  }
+
+  async function worker() {
+    while (true) {
+      const i = next++;
+      if (i >= total) return;
+      await foldOne(i);
+    }
+  }
+
+  status.textContent = `0/${total} structures (folding 3 at a time on the local Modal GPU)…`;
+  const workers = Array.from({length: Math.min(CONCURRENCY, total)}, worker);
+  await Promise.all(workers);
+
+  // Wire the per-card retry links (re-render the failed slot on click).
+  document.querySelectorAll('.mini-retry').forEach(a => {
+    a.addEventListener('click', async (ev) => {
+      ev.preventDefault();
+      const i = parseInt(a.dataset.i, 10);
+      delete STATE.structures[i];   // force re-fetch (bypass client cache)
+      await foldOne(i);
+    });
+  });
+
+  btn.textContent = 'All 10 structures rendered';
+}
+
+/* =========================================================================
+   SELECT a design — re-highlight everywhere + re-fold main viewer
+   ========================================================================= */
+function selectDesign(idx) {
+  STATE.selectedIdx = idx;
+  // re-highlight table, design cards, and (if rendered) the deep-dive grid
+  document.querySelectorAll('#results-body tr').forEach((tr, i) => tr.classList.toggle('selected', i === idx));
+  document.querySelectorAll('.design-card').forEach((card, i) => card.classList.toggle('selected', i === idx));
+  document.querySelectorAll('.viewer-card').forEach((card, i) => card.classList.toggle('selected', i === idx));
+  // re-fold main viewer with the new candidate
+  loadMainStructure(idx);
+}
+
+/* =========================================================================
+   MAIN GENERATE HANDLER
+   ========================================================================= */
+const epitopeIn = $('epitope');
+document.querySelectorAll('.example-btn').forEach(btn => {
+  btn.addEventListener('click', () => { epitopeIn.value = btn.dataset.epitope; });
+});
+
+// Glossary collapse toggle
+(function() {
+  const t = document.getElementById('glossary-toggle');
+  const g = document.getElementById('glossary');
+  if (!t || !g) return;
+  t.addEventListener('click', () => {
+    const open = g.classList.toggle('open');
+    t.textContent = (open ? '▾' : '▸') + ' Glossary of terms used on this page';
+  });
+})();
+
+$('generate-btn').addEventListener('click', async () => {
+  const ep = epitopeIn.value.trim().toUpperCase();
+  if (ep.length < 4) { $('status').textContent = 'Enter an epitope of at least 4 amino acids.'; return; }
+  const body = {
+    epitope: ep,
+    n_candidates: Math.max(1, Math.min(50, parseInt($('n_candidates').value) || 10)),
+    temperature: Math.max(0.3, Math.min(1.5, parseFloat($('temperature').value) || 0.7)),
+    top_p: 0.92,
+    model: $('model').value,
+    seed: 42
+  };
+  STATE.epitope = ep;
+  STATE.model = body.model;
+
+  $('generate-btn').disabled = true;
+  $('results').style.display = 'none';
+  $('status').textContent = 'Generating… first call after idle takes ~30–60 s for the GPU container to warm.';
+  const t0 = performance.now();
+
+  try {
+    const r = await fetch('/api/generate', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body)
+    });
+    if (r.status === 429) {
+      const j = await r.json();
+      $('status').textContent = `Rate limit reached (${j.limit_per_hour ?? 10}/hr). ${j.next_step ?? ''}`;
+      return;
+    }
+    if (!r.ok) throw new Error(`HTTP ${r.status}: ${(await r.text()).slice(0, 240)}`);
+    const data = await r.json();
+
+    // Hard-cap at 10 (server already clamps); stamp composite reward and sort
+    // by it descending so candidate #1 is the highest-scoring against the
+    // exact objective GDPO was trained to maximise. Invalid (is_valid_126
+    // == false) sequences naturally fall to the bottom because their gated
+    // rewards collapse to ~0.
+    STATE.candidates = (data.candidates || []).slice(0, 10).map(c => ({
+      ...c, composite: compositeReward(c),
+    }));
+    STATE.candidates.sort((a, b) => b.composite - a.composite);
+    const seqs = STATE.candidates.map(c => c.generated_sequence);
+    STATE.perPosMut = computeMutCounts(seqs, STATE.reference);
+    STATE.selectedIdx = 0;
+    STATE.structures = {};
+    STATE.miniViewers = {};
+
+    const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
+    $('results-meta').textContent = `${data.n_returned} candidates · ${data.model} · seed 42 · T ${body.temperature} · ${elapsed}s`;
+    renderTable();
+    renderAlignment();
+    renderDesignCards();
+
+    // Reset structure section
+    $('viewer-grid').style.display = 'none';
+    $('viewer-grid').innerHTML = '';
+    $('deepdive-btn').disabled = false;
+    $('deepdive-btn').textContent = 'Compute structures for all 10 →';
+    $('deepdive-status').textContent = '';
+
+    $('results').style.display = 'block';
+    $('status').textContent = '';
+    // Auto-fold the top candidate
+    loadMainStructure(0);
+  } catch (e) {
+    $('status').textContent = `Failed: ${e.message}`;
+  } finally {
+    $('generate-btn').disabled = false;
+  }
+});
+
+$('deepdive-btn').addEventListener('click', deepDive);
+</script>
+</body>
+</html>

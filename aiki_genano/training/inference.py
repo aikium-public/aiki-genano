@@ -29,6 +29,62 @@ from aiki_genano.training.data_utils import (
 )
 
 
+def _resolve_base_model_name(checkpoint_path: str) -> str:
+    """Resolve the LoRA's base_model_name_or_path against the local filesystem.
+
+    Returns either a valid local path, a HuggingFace repo id, or — as a last
+    resort — `nferruz/ProtGPT2` (with a warning, because that's NOT the
+    correct backbone for our DPO/GDPO adapters).
+    """
+    fallback = "nferruz/ProtGPT2"
+    cfg_path = os.path.join(checkpoint_path, "adapter_config.json")
+    if not os.path.exists(cfg_path):
+        return fallback
+
+    try:
+        with open(cfg_path, "r", encoding="utf-8") as f:
+            recorded = json.load(f).get("base_model_name_or_path", fallback)
+    except Exception as exc:
+        print(f"   WARN: could not parse adapter_config.json: {exc}")
+        return fallback
+
+    # Case 1: recorded path exists.
+    if os.path.exists(recorded):
+        return recorded
+
+    # Case 2: HF repo id format ("ns/repo" or "repo"); not a leading-slash path.
+    if not recorded.startswith("/") and " " not in recorded:
+        return recorded
+
+    # Case 3: stale absolute path. Try to find SFT/<basename> by walking up.
+    basename = os.path.basename(recorded.rstrip("/"))
+    if basename:
+        current = os.path.abspath(checkpoint_path)
+        for _ in range(4):
+            parent = os.path.dirname(current)
+            if parent == current:
+                break
+            candidate = os.path.join(parent, "SFT", basename)
+            if os.path.isdir(candidate):
+                print(f"   Resolved stale base path → {candidate}")
+                return candidate
+            # Also try parent directly (in case basename matches a top-level SFT)
+            sibling = os.path.join(parent, "SFT")
+            if os.path.isdir(sibling):
+                # Pick the first subdir that looks like a model (has config.json)
+                for entry in sorted(os.listdir(sibling)):
+                    full = os.path.join(sibling, entry)
+                    if os.path.isdir(full) and os.path.exists(os.path.join(full, "config.json")):
+                        print(f"   Resolved stale base path via SFT sibling → {full}")
+                        return full
+            current = parent
+
+    print(f"   WARN: could not resolve recorded base '{recorded}' on this filesystem; "
+          f"falling back to {fallback}. DPO/GDPO outputs may be wrong because the "
+          f"adapter was trained on top of the SFT-merged checkpoint, not raw ProtGPT2.")
+    return fallback
+
+
 def load_model_from_checkpoint(checkpoint_path, device="cuda"):
     """
     Load model from a training checkpoint.
@@ -58,17 +114,20 @@ def load_model_from_checkpoint(checkpoint_path, device="cuda"):
         # Case 2: LoRA checkpoint - need base model + adapter
         print("   Type: LoRA adapter (loading base + adapter)")
 
-        # Prefer the exact training base model recorded by PEFT.
-        # Falling back to ProtGPT2 can silently load the wrong backbone.
-        base_model_name = "nferruz/ProtGPT2"
-        adapter_cfg_path = os.path.join(checkpoint_path, "adapter_config.json")
-        if os.path.exists(adapter_cfg_path):
-            try:
-                with open(adapter_cfg_path, "r", encoding="utf-8") as f:
-                    adapter_cfg = json.load(f)
-                base_model_name = adapter_cfg.get("base_model_name_or_path", base_model_name)
-            except Exception as exc:
-                print(f"   Warning: could not parse adapter_config.json: {exc}")
+        # adapter_config.json's base_model_name_or_path was recorded at training
+        # time on a path that no longer exists in the released bundle (it was
+        # /workspace/results/aikium/.../NanoBody-design-sft-...). Resolve here:
+        #   1. If it's an existing path → use as-is.
+        #   2. If it's a valid HF repo id (no leading /) → use as-is.
+        #   3. If it's a stale absolute path: keep the basename and look for
+        #      an SFT/<basename> subdir inside the same checkpoint root as the
+        #      LoRA dir (works for both /vol/checkpoints/ on Modal and
+        #      /app/checkpoints/ on Docker).
+        #   4. Fall back to nferruz/ProtGPT2 with a clear warning. The DPO/GDPO
+        #      LoRA adapters were trained on top of the SFT-merged model, NOT
+        #      raw ProtGPT2, so this fallback yields an incorrect backbone —
+        #      hence the warning.
+        base_model_name = _resolve_base_model_name(checkpoint_path)
         print(f"   Base model: {base_model_name}")
         
         # Load tokenizer from checkpoint (has ChatML tokens: 50259)

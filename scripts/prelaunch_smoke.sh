@@ -24,12 +24,32 @@ while (( "$#" )); do
 done
 
 if [[ -z "$URL" ]]; then
+    # Modal's `app list --json` shape has changed across CLI releases; try a
+    # couple of plausible field names, fall through to the workspace pattern.
     URL="$(modal app list --json 2>/dev/null \
-        | python3 -c 'import sys,json;print(next((a["web_url"] for a in json.load(sys.stdin) if a["name"]=="aiki-genano"), ""))')" \
-        || true
+        | python3 -c '
+import sys, json
+try:
+    apps = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+if isinstance(apps, dict):
+    apps = apps.get("apps") or apps.get("data") or []
+for a in apps:
+    name = a.get("name") or a.get("app_name") or a.get("Name") or ""
+    if name == "aiki-genano":
+        url = a.get("web_url") or a.get("url") or a.get("URL") or ""
+        if url:
+            print(url); break
+' 2>/dev/null)" || true
 fi
 
-[[ -n "$URL" ]] || { echo "FATAL: could not determine app URL; pass --url" >&2; exit 2; }
+if [[ -z "$URL" ]]; then
+    echo "FATAL: could not auto-detect app URL." >&2
+    echo "Pass it explicitly:  scripts/prelaunch_smoke.sh --url https://<workspace>--aiki-genano-fastapi-app.modal.run" >&2
+    echo "(Look at the deploy output line: 'Created web function fastapi_app => <URL>')" >&2
+    exit 2
+fi
 URL="${URL%/}"
 echo "[prelaunch] target: $URL"
 
@@ -37,17 +57,17 @@ PASS=0; FAIL=0
 report() { if [[ "$1" == "PASS" ]]; then PASS=$((PASS+1)); else FAIL=$((FAIL+1)); fi; echo "  [$1] $2"; }
 
 # ── 1. Landing returns HTML ──────────────────────────────────────────────────
-body="$(curl -fsSL "$URL/" || true)"
+body="$(curl -fsSL --max-time 15 "$URL/" || true)"
 [[ "$body" == *"Aiki-GeNano"* ]] && report PASS "GET /"   || report FAIL "GET /"
 
 # ── 2. /api/health returns expected fields ───────────────────────────────────
-hjson="$(curl -fsSL "$URL/api/health" || true)"
+hjson="$(curl -fsSL --max-time 30 "$URL/api/health" || true)"
 ok="$(printf '%s' "$hjson" | python3 -c 'import json,sys;d=json.load(sys.stdin);print(int(all(k in d for k in ("status","version","models","sentinel_reward_on_reference"))))' 2>/dev/null || echo 0)"
 [[ "$ok" == "1" ]] && report PASS "GET /api/health" || report FAIL "GET /api/health: $hjson"
 
 # ── 3. /api/score returns rows for one sequence ──────────────────────────────
 ref="QVQLVESGGGSVQAGGSLRLSCTASGGSEYSYSTFSLGWFRQAPGQEREAVAAIASMGGLTYYADSVKGRFTISRDNAKNTVTLQMNNLKPVDTAIYYCAAVRGYFMRLPSWGQGTQVTVSGGGGS"
-sjson="$(curl -fsSL -X POST "$URL/api/score" -H 'Content-Type: application/json' \
+sjson="$(curl -fsSL --max-time 90 -X POST "$URL/api/score" -H 'Content-Type: application/json' \
     -d "{\"sequences\":[\"$ref\"]}" || true)"
 ok="$(printf '%s' "$sjson" | python3 -c 'import json,sys;d=json.load(sys.stdin);r=d.get("scored",[]);print(int(d.get("n_returned")==1 and r and "reward_scaffold_integrity" in r[0]))' 2>/dev/null || echo 0)"
 [[ "$ok" == "1" ]] && report PASS "POST /api/score" || report FAIL "POST /api/score: $sjson"
@@ -56,7 +76,7 @@ ok="$(printf '%s' "$sjson" | python3 -c 'import json,sys;d=json.load(sys.stdin);
 if (( SKIP_GENERATE )); then
     report PASS "POST /api/generate (skipped)"
 else
-    gjson="$(curl -fsSL -X POST "$URL/api/generate" -H 'Content-Type: application/json' \
+    gjson="$(curl -fsSL --max-time 240 -X POST "$URL/api/generate" -H 'Content-Type: application/json' \
         -d '{"epitope":"MNYPLTLEMDLENLEDLFWELDRLDNYNDTSLVENHL","n_candidates":3,"model":"GDPO_DPO","seed":42}' || true)"
     ok="$(printf '%s' "$gjson" | python3 -c 'import json,sys;d=json.load(sys.stdin);c=d.get("candidates",[]);print(int(d.get("n_returned")==3 and len(c)==3 and "reward_scaffold_integrity" in c[0]))' 2>/dev/null || echo 0)"
     [[ "$ok" == "1" ]] && report PASS "POST /api/generate" || report FAIL "POST /api/generate: $gjson"

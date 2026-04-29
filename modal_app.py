@@ -1,4 +1,4 @@
-"""Modal deployment of Aiki-GeNano (mAbs 2026) — inference + scoring + landing.
+"""Modal deployment of Aiki-GeNano (mAbs, submitted 2026) — inference + scoring + landing.
 
 Per AIKI_GENANO_LAUNCH_HANDOFF.md §4 (Aiki-XP recipe) and decision D3:
 inference-only on Modal; training stays Docker-only with --gpus all.
@@ -46,6 +46,49 @@ from collections import defaultdict, deque
 from typing import List, Optional
 
 import modal
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from pydantic import BaseModel, Field
+
+
+# ── Pydantic request models (module-level so type hints resolve under
+#    `from __future__ import annotations`) ────────────────────────────────────
+
+class GenerateRequest(BaseModel):
+    epitope: str = Field(..., min_length=4, max_length=244,
+                         description="Target sequence (linear peptide, intrinsically-disordered "
+                                     "region, or whole soluble domain) in uppercase amino acids. "
+                                     "Upper bound = 244 because the construct epitope + 30-AA "
+                                     "linker + 126-AA binder must fit ESMFold's 400-AA cap.")
+    # Accepted up to 50 to avoid throwing a 422 at well-meaning callers, but
+    # silently clamped to 10 inside the handler (see api_generate). Landing
+    # assumes batches of 10 for the alignment grid and 5x2 card layout;
+    # the cap also bounds the per-IP surrogate-extraction calculus.
+    n_candidates: int = Field(10, ge=1, le=50)
+    temperature: float = Field(0.7, gt=0.0, le=2.0)
+    top_p: float = Field(0.92, gt=0.0, le=1.0)
+    model: str = Field("GDPO_DPO", pattern="^(SFT|DPO|GDPO_DPO|GDPO_SFT)$")
+    seed: int = Field(42, ge=0, le=2**31 - 1)
+
+
+class ScoreRequest(BaseModel):
+    sequences: List[str] = Field(..., min_length=1, max_length=100)
+
+
+class StructureRequest(BaseModel):
+    """Predict the 3D structure of an epitope-linker-binder fusion via ESMFold Atlas.
+
+    The 30-residue GS linker decouples the relative orientation of binder to
+    epitope (so the predicted docked geometry is NOT meaningful — that would
+    require a structure-conditioned docking model). Use the prediction to
+    inspect the binder's intrinsic fold quality (pLDDT, CDR loop geometry)
+    and visually confirm the structure is reasonable.
+    """
+    epitope: str = Field(..., min_length=4, max_length=244)
+    binder: str = Field(..., min_length=20, max_length=200)
+    linker: str = Field("GGGGSGGGGSGGGGSGGGGSGGGGSGGGGS",
+                        pattern="^[ACDEFGHIKLMNPQRSTVWY]{1,60}$",
+                        description="30-AA G4S linker by default; overridable.")
 
 
 # ── Image ────────────────────────────────────────────────────────────────────
@@ -81,7 +124,20 @@ if os.environ.get("AIKI_GENANO_BUILD_LOCAL") == "1":
         .run_commands("cd /app && pip install -e .")
     )
 else:
-    image = modal.Image.from_registry(GHCR_IMAGE).pip_install("fastapi", "uvicorn")
+    # The GHCR image sets ENTRYPOINT ["python", "-m", "aiki_genano.cli"] for
+    # CLI-style `docker run`. Modal needs to invoke its own worker entrypoint,
+    # so we clear ours here. Without this, Modal's startup `python …` invocation
+    # is intercepted by the CLI dispatcher and exits with "unknown command 'python'".
+    image = (
+        modal.Image.from_registry(GHCR_IMAGE)
+        .dockerfile_commands(["ENTRYPOINT []", "CMD []"])
+        .pip_install("fastapi", "uvicorn")
+        # Overlay local aiki_genano/ so we can ship code fixes without
+        # re-pushing the 5 GB image to GHCR. Overlay web/ for the landing
+        # page assets (HTML, logo, favicons).
+        .add_local_dir("aiki_genano", "/app/aiki_genano", copy=True)
+        .add_local_dir("web", "/web", copy=True)
+    )
 
 
 # ── Volumes ──────────────────────────────────────────────────────────────────
@@ -105,7 +161,10 @@ app = modal.App("aiki-genano")
 # Acceptable for a low-traffic demo; if traffic warrants, replace with a
 # Modal-shared dict or Redis.
 _RATE_WINDOW_S = 3600
-_RATE_LIMITS = {"generate": 10, "score": 30}
+# /api/generate at 10/hr/IP balances "demo wow factor" against bounded
+# surrogate-extraction risk. /api/score is CPU-only so cheap. /api/structure
+# is a proxy to ESMFold Atlas (external API, courteous cap).
+_RATE_LIMITS = {"generate": 10, "score": 30, "structure": 30}
 _rate_state: dict[str, dict[str, deque]] = defaultdict(lambda: defaultdict(deque))
 
 
@@ -175,6 +234,98 @@ def generate_remote(
         return pd.read_csv(out).to_dict(orient="records")
 
 
+# ── ESMFold v1 on the Modal GPU ──────────────────────────────────────────────
+# We run ESMFold ourselves (HuggingFace `facebook/esmfold_v1`, ~2.6 GB
+# weights) on the same A10G class as the GDPO generator. Reasons:
+#   • End-to-end latency under our control; no Atlas 504 / queue waits.
+#   • Module-global model cache so warm calls are <2 s for a 170 AA chain.
+#   • scaledown_window=600 keeps the GPU container around for 10 min after
+#     the last fold, so a typical demo session stays warm without paying
+#     for a continuous keep_warm replica.
+# /api/structure tries this first; if it fails (cold-start exhausts the
+# request timeout, model OOM, etc.) the endpoint falls back to ESMFold
+# Atlas — best of both.
+@app.function(
+    image=image,
+    gpu="A10G",
+    volumes={VOL_HF_CACHE: hf_cache_volume},
+    timeout=300,
+    scaledown_window=600,
+)
+def fold_remote(sequence: str) -> dict:
+    """Fold a single chain via ESMFold v1 on a Modal A10G."""
+    import os, time as _time
+    os.environ.setdefault("HF_HOME", VOL_HF_CACHE)
+    os.environ.setdefault("HUGGINGFACE_HUB_CACHE", VOL_HF_CACHE)
+
+    g = globals()
+    if "_ESMFOLD_MODEL" not in g:
+        import torch
+        from transformers import AutoTokenizer, EsmForProteinFolding
+        t_load = _time.time()
+        tok = AutoTokenizer.from_pretrained("facebook/esmfold_v1")
+        model = EsmForProteinFolding.from_pretrained(
+            "facebook/esmfold_v1", low_cpu_mem_usage=True
+        )
+        model = model.cuda()
+        # Half-precision the ESM trunk (the heavy part). The folding head
+        # stays in fp32 for numerical stability. Cuts VRAM ~40 % and is the
+        # configuration recommended in HF's ESMFold notebook.
+        model.esm = model.esm.half()
+        model.trunk.set_chunk_size(64)
+        model.eval()
+        g["_ESMFOLD_TOKENIZER"] = tok
+        g["_ESMFOLD_MODEL"] = model
+        g["_ESMFOLD_LOAD_S"] = round(_time.time() - t_load, 2)
+
+    import torch
+    from transformers.models.esm.openfold_utils.feats import atom14_to_atom37
+    from transformers.models.esm.openfold_utils.protein import (
+        to_pdb, Protein as OFProtein,
+    )
+
+    seq = sequence.upper()
+    tok = g["_ESMFOLD_TOKENIZER"]
+    model = g["_ESMFOLD_MODEL"]
+    inputs = tok([seq], return_tensors="pt", add_special_tokens=False).to("cuda")
+
+    t0 = _time.time()
+    with torch.no_grad():
+        outputs = model(inputs["input_ids"])
+    fold_s = round(_time.time() - t0, 2)
+
+    final_atom_positions = atom14_to_atom37(outputs["positions"][-1], outputs)
+    final_atom_positions = final_atom_positions.cpu().numpy()
+    out_np = {k: v.to("cpu").numpy() for k, v in outputs.items() if hasattr(v, "to")}
+    aa = out_np["aatype"][0]
+    mask = out_np["atom37_atom_exists"][0]
+    resid = out_np["residue_index"][0] + 1
+    plddt_full = out_np["plddt"][0]   # (L, 37) per-atom pLDDT on 0–100 scale
+    # Per-residue pLDDT = mean over present atoms (matches AlphaFold convention)
+    per_res_plddt = (plddt_full * mask).sum(axis=-1) / mask.sum(axis=-1).clip(min=1)
+    # Broadcast back to (L, 37) for the PDB B-factor column so every atom
+    # of a given residue carries the same per-residue pLDDT.
+    b_factors = per_res_plddt[:, None].repeat(37, axis=1)
+
+    pred = OFProtein(
+        aatype=aa,
+        atom_positions=final_atom_positions[0],
+        atom_mask=mask,
+        residue_index=resid,
+        b_factors=b_factors,
+        chain_index=out_np["chain_index"][0] if "chain_index" in out_np else None,
+    )
+    pdb_text = to_pdb(pred)
+
+    return {
+        "pdb": pdb_text,
+        "plddt_mean": float(per_res_plddt.mean()),
+        "fold_s": fold_s,
+        "load_s": g.get("_ESMFOLD_LOAD_S", 0.0),
+        "source": "local-esmfold-v1",
+    }
+
+
 # ── Local-profile scoring (CPU) ──────────────────────────────────────────────
 @app.function(
     image=image,
@@ -202,24 +353,7 @@ def score_remote(sequences: List[str]) -> List[dict]:
 )
 @modal.asgi_app()
 def fastapi_app():
-    from fastapi import FastAPI, Request, HTTPException
-    from fastapi.responses import HTMLResponse, JSONResponse
-    from pydantic import BaseModel, Field
-
     fapi = FastAPI(title="Aiki-GeNano", version="1.0.0")
-
-    class GenerateRequest(BaseModel):
-        epitope: str = Field(..., min_length=4, max_length=200,
-                             description="Target epitope peptide sequence (uppercase AAs).")
-        n_candidates: int = Field(10, ge=1, le=50)
-        temperature: float = Field(0.7, gt=0.0, le=2.0)
-        top_p: float = Field(0.92, gt=0.0, le=1.0)
-        model: str = Field("GDPO_DPO",
-                           pattern="^(SFT|DPO|GDPO_DPO|GDPO_SFT)$")
-        seed: int = Field(42, ge=0, le=2**31 - 1)
-
-    class ScoreRequest(BaseModel):
-        sequences: List[str] = Field(..., min_length=1, max_length=100)
 
     def _ip(request: Request) -> str:
         # Modal puts the client IP in X-Forwarded-For; first hop is the user.
@@ -227,7 +361,27 @@ def fastapi_app():
 
     @fapi.get("/", response_class=HTMLResponse)
     async def landing():
-        return _LANDING_HTML
+        return HTMLResponse(open("/web/index.html").read())
+
+    @fapi.get("/aikium_logo.png")
+    async def logo():
+        return FileResponse("/web/aikium_logo.png", media_type="image/png")
+
+    @fapi.get("/favicon.ico")
+    async def favicon():
+        return FileResponse("/web/favicon.ico", media_type="image/x-icon")
+
+    @fapi.get("/favicon-16.png")
+    async def favicon16():
+        return FileResponse("/web/favicon-16.png", media_type="image/png")
+
+    @fapi.get("/favicon-32.png")
+    async def favicon32():
+        return FileResponse("/web/favicon-32.png", media_type="image/png")
+
+    @fapi.get("/apple-touch-icon.png")
+    async def apple_icon():
+        return FileResponse("/web/apple-touch-icon.png", media_type="image/png")
 
     @fapi.get("/api/health")
     async def health():
@@ -248,10 +402,13 @@ def fastapi_app():
         rl = _rate_check(_ip(request), "generate")
         if rl is not None:
             return JSONResponse(status_code=429, content=rl)
+        # Silent clamp to 10 — see GenerateRequest. We prefer a quiet truncation
+        # over a 422 so the user never sees a Pydantic-shaped error.
+        n_candidates = min(10, max(1, req.n_candidates))
         try:
             rows = generate_remote.remote(
                 epitope=req.epitope.upper(),
-                n_candidates=req.n_candidates,
+                n_candidates=n_candidates,
                 temperature=req.temperature,
                 top_p=req.top_p,
                 model_name=req.model,
@@ -261,6 +418,159 @@ def fastapi_app():
             raise HTTPException(status_code=500, detail=f"generate failed: {exc}")
         return {"epitope": req.epitope.upper(), "model": req.model,
                 "n_returned": len(rows), "candidates": rows}
+
+    # Process-local PDB cache. Atlas folds are deterministic on input
+    # sequence, so identical (epitope, linker, binder) submissions can be
+    # served from cache instead of re-hitting Atlas. No eviction: the
+    # working set for a low-traffic demo fits comfortably in RAM, and the
+    # container is recycled by Modal periodically anyway.
+    _structure_cache: dict[str, dict] = {}
+
+    @fapi.post("/api/structure")
+    async def api_structure(req: StructureRequest, request: Request):
+        """Fold the epitope+linker+binder concatenation. Tries local ESMFold
+        on the Modal A10G first, falls back to ESMFold Atlas on failure.
+        PDB B-factor column is normalised to per-residue pLDDT 0–100 from
+        either source so the client renders both identically."""
+        rl = _rate_check(_ip(request), "structure")
+        if rl is not None:
+            return JSONResponse(status_code=429, content=rl)
+
+        epitope = req.epitope.upper()
+        binder = req.binder.upper()
+        linker = req.linker.upper()
+        full_seq = epitope + linker + binder
+        if len(full_seq) > 400:
+            raise HTTPException(
+                status_code=400,
+                detail=f"epitope+linker+binder = {len(full_seq)} AA exceeds the "
+                       f"ESMFold 400-AA cap. Trim epitope or use shorter linker."
+            )
+
+        import time as _time
+        import urllib.request, urllib.error
+
+        # Cache hit: skip both folding paths.
+        cache_key = full_seq
+        if cache_key in _structure_cache:
+            cached = dict(_structure_cache[cache_key])
+            cached["latency_s"] = 0.0
+            cached["cached"] = True
+            return cached
+
+        t0 = _time.time()
+        pdb_text: str | None = None
+        plddt_mean: float | None = None
+        source: str = ""
+        load_s: float | None = None
+        fold_s: float | None = None
+        local_err: str = ""
+
+        # ── Path 1: local ESMFold on the GPU container ────────────────────
+        try:
+            local = fold_remote.remote(full_seq)
+            pdb_text = local["pdb"]
+            plddt_mean = float(local["plddt_mean"])
+            load_s = float(local.get("load_s") or 0.0)
+            fold_s = float(local.get("fold_s") or 0.0)
+            source = "local-esmfold-v1"
+        except Exception as e:
+            local_err = f"{type(e).__name__}: {e}"
+
+        # ── Path 2: ESMFold Atlas fallback (with retry on transient errors)
+        if pdb_text is None:
+            TRANSIENT = {500, 502, 503, 504}
+            attempts, max_attempts = 0, 3
+            last_err = ""
+            atlas_pdb: str | None = None
+            while attempts < max_attempts:
+                attempts += 1
+                try:
+                    urlreq = urllib.request.Request(
+                        url="https://api.esmatlas.com/foldSequence/v1/pdb/",
+                        data=full_seq.encode("ascii"),
+                        method="POST",
+                        headers={
+                            "Content-Type": "text/plain",
+                            "User-Agent": "aiki-genano-landing/1.0 (modal.run)",
+                        },
+                    )
+                    with urllib.request.urlopen(urlreq, timeout=90) as r:
+                        atlas_pdb = r.read().decode("utf-8", errors="replace")
+                    break
+                except urllib.error.HTTPError as e:
+                    last_err = f"HTTP {e.code}: {e.reason}"
+                    if e.code in TRANSIENT and attempts < max_attempts:
+                        _time.sleep(1.0 + 0.7 * attempts)
+                        continue
+                    raise HTTPException(
+                        status_code=502,
+                        detail=f"Both folding paths failed. Local: {local_err}. Atlas {last_err}.",
+                    )
+                except Exception as e:
+                    last_err = f"{type(e).__name__}: {e}"
+                    if attempts < max_attempts:
+                        _time.sleep(1.0 + 0.7 * attempts)
+                        continue
+                    raise HTTPException(
+                        status_code=502,
+                        detail=f"Both folding paths failed. Local: {local_err}. Atlas: {last_err}.",
+                    )
+
+            # Atlas writes per-atom pLDDT on a 0–1 scale into the B-factor
+            # column. Rescale to 0–100 so the client's colorfunc handles
+            # both sources identically.
+            rescaled_lines = []
+            for line in atlas_pdb.splitlines():
+                if line.startswith(("ATOM", "HETATM")) and len(line) >= 66:
+                    try:
+                        b = float(line[60:66].strip())
+                        rescaled_lines.append(f"{line[:60]}{b * 100:6.2f}{line[66:]}")
+                        continue
+                    except ValueError:
+                        pass
+                rescaled_lines.append(line)
+            pdb_text = "\n".join(rescaled_lines) + ("\n" if not atlas_pdb.endswith("\n") else "")
+            source = "esmatlas-fallback"
+
+        # Parse per-residue pLDDT from CA atoms (B-factor column, now 0–100
+        # for both sources). If `plddt_mean` was already returned by the
+        # local fold path, prefer that; recompute here only as a sanity
+        # cross-check / Atlas fallback.
+        ca_plddts = []
+        for line in pdb_text.splitlines():
+            if line.startswith("ATOM") and len(line) >= 66 and line[12:16].strip() == "CA":
+                try:
+                    ca_plddts.append(float(line[60:66].strip()))
+                except ValueError:
+                    pass
+        if plddt_mean is None and ca_plddts:
+            plddt_mean = sum(ca_plddts) / len(ca_plddts)
+
+        # 1-indexed residue ranges so JS can pass them to 3Dmol's resi selector
+        result = {
+            "pdb": pdb_text,
+            "epitope_resi": [1, len(epitope)],
+            "linker_resi":  [len(epitope) + 1, len(epitope) + len(linker)],
+            "binder_resi":  [len(epitope) + len(linker) + 1, len(full_seq)],
+            "epitope_len": len(epitope),
+            "linker_len": len(linker),
+            "binder_len": len(binder),
+            "total_len": len(full_seq),
+            "pLDDT_mean": plddt_mean,
+            "n_ca_atoms": len(ca_plddts),
+            "latency_s": round(_time.time() - t0, 2),
+            "load_s": load_s,
+            "fold_s": fold_s,
+            "cached": False,
+            "source": source,
+            "caveat": ("ESMFold does not perform protein-protein docking. The relative "
+                       "orientation of binder to epitope across the 30-AA flexible linker "
+                       "is essentially arbitrary; use this view to inspect the binder's "
+                       "intrinsic fold and pLDDT, not the binding geometry."),
+        }
+        _structure_cache[cache_key] = result
+        return result
 
     @fapi.post("/api/score")
     async def api_score(req: ScoreRequest, request: Request):
@@ -327,74 +637,3 @@ def warm_generate(
 
 
 # ── Landing HTML (intentionally minimal — paper/Docker/Zenodo are the story) ─
-_LANDING_HTML = """<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Aiki-GeNano — preference-optimized nanobody design</title>
-<style>
-  body { font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-         max-width: 760px; margin: 4rem auto; padding: 0 1.25rem; color: #181818; }
-  h1 { font-size: 2rem; margin: 0 0 .25rem; }
-  h2 { font-size: 1.1rem; margin: 2rem 0 .5rem; color: #333; }
-  p, li { color: #2a2a2a; }
-  code { background: #f3f3f3; padding: .12em .4em; border-radius: 3px; font-size: .94em; }
-  pre  { background: #f3f3f3; padding: .9em 1em; border-radius: 4px; overflow-x: auto; }
-  a { color: #0d4c8a; }
-  .pill { display: inline-block; padding: .2em .6em; margin-right: .35em; margin-bottom: .35em;
-          background: #eef3f8; border-radius: 12px; font-size: .82em; }
-  .footer { color: #888; font-size: .85em; margin-top: 3rem; border-top: 1px solid #eee; padding-top: 1rem; }
-</style>
-</head>
-<body>
-  <h1>Aiki-GeNano</h1>
-  <p><em>Preference-optimized generation of developable nanobodies across 65 epitope targets.</em>
-     mAbs (2026), Aikium Inc.</p>
-  <div>
-    <span class="pill">paper: <a href="https://github.com/aikium-public/aiki-genano#paper">bioRxiv</a></span>
-    <span class="pill">code: <a href="https://github.com/aikium-public/aiki-genano">GitHub</a></span>
-    <span class="pill">data + weights: <a href="https://zenodo.org/records/PLACEHOLDER">Zenodo</a></span>
-    <span class="pill">image: <code>ghcr.io/aikium-public/aiki-genano:1.0.0</code></span>
-  </div>
-
-  <h2>Try it</h2>
-  <p>Generate ten candidate nanobody sequences for a target epitope (POST JSON):</p>
-<pre>curl -X POST $URL/api/generate \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "epitope": "MNYPLTLEMDLENLEDLFWELDRLDNYNDTSLVENHL",
-    "n_candidates": 10,
-    "model": "GDPO_DPO"
-  }'</pre>
-
-  <p>Score sequences you already have (returns the same six GDPO rewards
-     used during training, plus motif/biophysical/CDR descriptors):</p>
-<pre>curl -X POST $URL/api/score \\
-  -H "Content-Type: application/json" \\
-  -d '{"sequences": ["QVQLVESGGGS..."]}'</pre>
-
-  <h2>Limits</h2>
-  <p>10 generations/hour and 30 scores/hour per IP. For higher throughput or
-     commercial evaluation, please contact <a href="mailto:partnerships@aikium.com">partnerships@aikium.com</a>.
-     The endpoint is GPU-backed and scales to zero — first call after an idle
-     period takes ~30&nbsp;seconds.</p>
-
-  <h2>Reproducibility</h2>
-  <p>For the full paper pipeline (SFT → DPO → GDPO training, property prediction
-     with TEMPRO + NetSolP + Sapiens, and the analysis notebook that produces
-     every figure), use the Docker image with <code>--gpus all</code>:</p>
-<pre>docker run --rm --gpus all \\
-  -v $PWD/checkpoints:/app/checkpoints \\
-  -v $PWD/output:/app/output \\
-  ghcr.io/aikium-public/aiki-genano:1.0.0 \\
-  predict --sequences /app/output/preds.csv --with-properties \\
-          --output /app/output/profiled.csv</pre>
-
-  <p class="footer">
-    Each upstream model and dataset retains its own licence. Users deploying
-    Aiki-GeNano, its outputs, or derived sequences in their own workflows are
-    responsible for complying with the respective upstream terms.
-  </p>
-</body>
-</html>"""
