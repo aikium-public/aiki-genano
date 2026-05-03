@@ -638,7 +638,7 @@ select.field-input { cursor: pointer; }
   <div class="panel" id="abstract">
     <div class="panel-eyebrow">From the paper</div>
     <h2>Abstract</h2>
-    <p class="panel-sub">From the mAbs (submitted) manuscript, verbatim.</p>
+    <p class="panel-sub">From the manuscript, verbatim. Preprint: <a href="https://www.biorxiv.org/content/10.64898/2026.04.28.721526v1" style="color:var(--champagne);text-decoration:underline;text-decoration-color:rgba(201,169,97,0.4);">bioRxiv 2026.04.28.721526</a> (submitted to mAbs).</p>
     <blockquote class="paper-abstract">
       <p>Therapeutic nanobodies must combine target binding with biophysical and chemical properties that determine manufacturability, stability, and clinical viability, collectively termed <strong>developability</strong>, yet most computational design pipelines still treat developability as a post-hoc filter rather than an integrated training objective.</p>
       <p>We present <strong>Aiki-GeNano</strong>, a three-stage language-model alignment pipeline for epitope-conditioned nanobody generation that integrates multiple developability signals directly into training, using only sequence information and previously published predictors. Starting from <strong>ProtGPT2</strong>, we perform supervised fine-tuning on 1.35&nbsp;million nanobody–epitope pairs across 65 target epitopes generated on an mRNA-display platform, apply <strong>Direct Preference Optimization</strong> on 522,800 pairs ranked by a composite of selectivity, predicted thermal stability, solubility, and humanness, and apply <strong>Group Reward-Decoupled Policy Optimization (GDPO)</strong> against six sequence-based rewards covering FR2 hydrophobicity, hydrophobic-patch coverage, chemical-liability motifs, Wilkinson–Harrison expression probability, VHH hallmark residues, and scaffold integrity.</p>
@@ -685,7 +685,7 @@ select.field-input { cursor: pointer; }
     <h2>Paper, code, data, and container image</h2>
     <p class="panel-sub">Everything needed to verify the paper's numerical claims and to run the same pipeline locally on a GPU.</p>
     <div class="repro-grid">
-      <div class="repro-card"><div class="label">Paper</div><a href="https://www.tandfonline.com/journals/kmab20">Meda et&nbsp;al., mAbs (submitted, 2026)</a><span class="desc">Preprint forthcoming on bioRxiv.</span></div>
+      <div class="repro-card"><div class="label">Paper</div><a href="https://www.biorxiv.org/content/10.64898/2026.04.28.721526v1">Meda et&nbsp;al., bioRxiv preprint (DOI 10.64898/2026.04.28.721526)</a><span class="desc">Submitted to mAbs (2026); preprint posted 2026-04-28.</span></div>
       <div class="repro-card"><div class="label">Source code</div><a href="https://github.com/aikium-public/aiki-genano">github.com/aikium-public/aiki-genano</a><span class="desc">MIT licence. Training, inference, evaluation, analysis notebooks.</span></div>
       <div class="repro-card"><div class="label">Docker image</div><a href="https://github.com/aikium-public/aiki-genano/pkgs/container/aiki-genano"><code>ghcr.io/aikium-public/aiki-genano:1.0.0</code></a><span class="desc">CUDA 12.1 + PyTorch 2.2 + TRL-GDPO. Runs end-to-end with <code>--gpus all</code>.</span></div>
       <div class="repro-card"><div class="label">Figure data + property tables</div><a href="https://doi.org/10.5281/zenodo.19757842">Zenodo · 10.5281/zenodo.19757842</a><span class="desc">CC-BY-NC-4.0. All numerical figure data; per-sequence properties for the 10 disclosed targets (sequences stripped).</span></div>
