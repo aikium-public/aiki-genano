@@ -18,7 +18,7 @@ Manuscript-revision sync. Source code, training pipeline, Docker image, and Zeno
 
 ## [1.0.0] — 2026-04-25
 
-Initial public release accompanying the mAbs (submitted) paper *"Aiki-GeNano: Multi-Stage Preference Optimization for Generative Design of Developable Nanobodies"* (Meda et al., 2026).
+Initial public release accompanying the paper *"Aiki-GeNano: Multi-Stage Preference Optimization for Generative Design of Developable Nanobodies"* (Meda et al., 2026; bioRxiv preprint [10.64898/2026.04.28.721526](https://www.biorxiv.org/content/10.64898/2026.04.28.721526v1); submitted to mAbs).
 
 - Three-stage staged language-model alignment pipeline (SFT → DPO → GDPO) on ProtGPT2 for epitope-conditioned nanobody design.
 - Six sequence-based GDPO reward functions: FR2 hydrophobicity, hydrophobic-patch coverage, chemical-liability motifs (deamidation/isomerisation/N-glycosylation/oxidation), Wilkinson–Harrison expression probability, VHH FR2 hallmark conservation, and scaffold integrity.

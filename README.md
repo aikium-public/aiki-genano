@@ -6,7 +6,7 @@ A staged language-model alignment pipeline (SFT → DPO → GDPO) that takes a t
 
 | | |
 |---|---|
-| Paper (preprint) | bioRxiv (DOI assigned on screening) |
+| Paper (preprint) | [bioRxiv 2026.04.28.721526](https://www.biorxiv.org/content/10.64898/2026.04.28.721526v1) (submitted to mAbs) |
 | Figure data | Zenodo: <https://doi.org/10.5281/zenodo.19757842> (CC-BY-NC-4.0) |
 | Trained checkpoints | available from `partnerships@aikium.com` (NDA) |
 | Docker image | `ghcr.io/aikium-public/aiki-genano:1.0.0` |
@@ -151,9 +151,11 @@ Add a function with signature `f(completions: list[str], **kwargs) -> list[float
   title   = {Aiki-GeNano: Multi-Stage Preference Optimization for Generative Design of Developable Nanobodies},
   author  = {Meda, Radheesh Sharma and Doshi, Jigar and Iyer, Eswar and
              Shastry, Shankar and Mysore, Venkatesh},
-  journal = {mAbs},
+  journal = {bioRxiv},
   year    = {2026},
-  note    = {Submitted; preprint forthcoming on bioRxiv}
+  doi     = {10.64898/2026.04.28.721526},
+  url     = {https://www.biorxiv.org/content/10.64898/2026.04.28.721526v1},
+  note    = {Preprint; submitted to mAbs}
 }
 
 @dataset{Aiki-GeNano-Zenodo-2026,
