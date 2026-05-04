@@ -275,46 +275,21 @@ def fold_remote(sequence: str) -> dict:
         # transformers >= 4.43 added check_torch_load_is_safe() for
         # CVE-2025-32434 that hard-rejects torch.load on torch < 2.6.
         # Our pinned torch 2.2.0 (matches the paper's training environment)
-        # tripped this check. Patch the symbol everywhere it's bound — the
-        # function is imported by-name into multiple submodules at import
-        # time, so patching only `transformers.utils.import_utils` doesn't
-        # reach the already-bound reference inside `modeling_utils`. Justify:
-        # we're loading a single known HF model into VRAM in a sandboxed
-        # Modal container; the deserialization-attack vector the CVE
-        # describes (arbitrary code execution from a hostile pickle) does
-        # not apply because the file source is the canonical
-        # facebook/esmfold_v1 HF repo.
-        def _noop(*args, **kwargs): return None
+        # tripped this check. Replace the function's __code__ object in
+        # place with a lambda no-op — this is bulletproof against any
+        # by-name re-import or rebinding because we mutate the function
+        # object itself, not just one binding. Justify: we're loading a
+        # single known HF model into VRAM in a sandboxed Modal container;
+        # the deserialization-attack vector the CVE describes (arbitrary
+        # code execution from a hostile pickle) does not apply because the
+        # file source is the canonical facebook/esmfold_v1 HF repo.
         try:
             import transformers.utils.import_utils as _tiu
-            _tiu.check_torch_load_is_safe = _noop
-        except Exception:
-            pass
-        try:
-            import transformers.modeling_utils as _tmu
-            _tmu.check_torch_load_is_safe = _noop
-        except Exception:
-            pass
-        # Belt-and-suspenders: walk the loaded transformers tree and patch
-        # any other module that imported the symbol by-name.
-        try:
-            import sys as _sys
-            for _mod_name, _mod in list(_sys.modules.items()):
-                if not _mod_name.startswith("transformers"): continue
-                if hasattr(_mod, "check_torch_load_is_safe"):
-                    setattr(_mod, "check_torch_load_is_safe", _noop)
-        except Exception:
-            pass
+            _tiu.check_torch_load_is_safe.__code__ = (lambda: None).__code__
+            print(f"[fold_remote] check_torch_load_is_safe patched in place")
+        except Exception as _exc:
+            print(f"[fold_remote] WARN could not patch check_torch_load_is_safe: {_exc}")
         from transformers import AutoTokenizer, EsmForProteinFolding
-        # Re-apply after the import (in case the line above pulled in new
-        # modules with their own fresh bindings).
-        try:
-            for _mod_name, _mod in list(_sys.modules.items()):
-                if not _mod_name.startswith("transformers"): continue
-                if hasattr(_mod, "check_torch_load_is_safe"):
-                    setattr(_mod, "check_torch_load_is_safe", _noop)
-        except Exception:
-            pass
         t_load = _time.time()
         tok = AutoTokenizer.from_pretrained("facebook/esmfold_v1")
         model = EsmForProteinFolding.from_pretrained(
