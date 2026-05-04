@@ -359,7 +359,11 @@ def score_remote(sequences: List[str]) -> List[dict]:
     image=image,
     cpu=1,
     min_containers=1,
-    timeout=60,
+    # 300 s (5 min) request timeout. Cold-path /api/sample (generate 10
+    # candidates + ESMFold the top) and the equivalent first-call path of
+    # /api/generate + /api/structure can take ~60-90 s on a cold GPU
+    # container; the previous 60 s was getting clipped mid-fold.
+    timeout=300,
 )
 @modal.asgi_app()
 def fastapi_app():
@@ -419,7 +423,7 @@ def fastapi_app():
         effective_temperature = min(1.5, max(0.7, req.temperature))
         effective_top_p = min(1.0, max(0.85, req.top_p))
         try:
-            rows = generate_remote.remote(
+            rows = await generate_remote.remote.aio(
                 epitope=req.epitope.upper(),
                 n_candidates=n_candidates,
                 temperature=effective_temperature,
@@ -469,7 +473,7 @@ def fastapi_app():
             return cached
         # Cold-path compute. Generate 10 candidates for GLP-1 + fold the top.
         try:
-            rows = generate_remote.remote(
+            rows = await generate_remote.remote.aio(
                 epitope=_SAMPLE_EPITOPE,
                 n_candidates=10,
                 temperature=0.7,
@@ -498,7 +502,7 @@ def fastapi_app():
         top_binder = rows_sorted[0]["generated_sequence"]
         full_seq = _SAMPLE_EPITOPE + "GGGGSGGGGSGGGGSGGGGSGGGGSGGGGS" + top_binder
         try:
-            local = fold_remote.remote(full_seq)
+            local = await fold_remote.remote.aio(full_seq)
             structure = {
                 "pdb": local["pdb"],
                 "epitope_resi": [1, len(_SAMPLE_EPITOPE)],
@@ -567,7 +571,7 @@ def fastapi_app():
 
         # ── Path 1: local ESMFold on the GPU container ────────────────────
         try:
-            local = fold_remote.remote(full_seq)
+            local = await fold_remote.remote.aio(full_seq)
             pdb_text = local["pdb"]
             plddt_mean = float(local["plddt_mean"])
             load_s = float(local.get("load_s") or 0.0)
@@ -677,7 +681,7 @@ def fastapi_app():
         if rl is not None:
             return JSONResponse(status_code=429, content=rl)
         try:
-            rows = score_remote.remote([s.upper() for s in req.sequences])
+            rows = await score_remote.remote.aio([s.upper() for s in req.sequences])
         except Exception as exc:
             raise HTTPException(status_code=500, detail=f"score failed: {exc}")
         return {"n_returned": len(rows), "scored": rows}
