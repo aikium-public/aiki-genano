@@ -328,8 +328,15 @@ def fold_remote(sequence: str) -> dict:
     aa = out_np["aatype"][0]
     mask = out_np["atom37_atom_exists"][0]
     resid = out_np["residue_index"][0] + 1
-    plddt_full = out_np["plddt"][0]   # (L, 37) per-atom pLDDT on 0–100 scale
-    # Per-residue pLDDT = mean over present atoms (matches AlphaFold convention)
+    # HF ESMFold returns plddt on a 0-1 scale; the rest of the codebase
+    # (plddtColor in the landing, the AlphaFold convention generally) uses
+    # 0-100. Normalise here, ONCE, so every downstream consumer (PDB
+    # B-factor column, plddt_mean field, /api/sample bundle) sees a single
+    # consistent scale. /api/structure's Atlas-fallback path also writes
+    # 0-100 after its own *100 rewrite, so the client colorfunc reads
+    # atom.b directly without any further branching.
+    plddt_full = out_np["plddt"][0] * 100.0   # (L, 37) per-atom pLDDT, 0-100
+    # Per-residue pLDDT = mean over present atoms (AlphaFold convention).
     per_res_plddt = (plddt_full * mask).sum(axis=-1) / mask.sum(axis=-1).clip(min=1)
     # Broadcast back to (L, 37) for the PDB B-factor column so every atom
     # of a given residue carries the same per-residue pLDDT.
@@ -347,7 +354,7 @@ def fold_remote(sequence: str) -> dict:
 
     return {
         "pdb": pdb_text,
-        "plddt_mean": float(per_res_plddt.mean()),
+        "plddt_mean": float(per_res_plddt.mean()),   # 0-100
         "fold_s": fold_s,
         "load_s": g.get("_ESMFOLD_LOAD_S", 0.0),
         "source": "local-esmfold-v1",
