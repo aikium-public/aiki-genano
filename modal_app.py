@@ -517,31 +517,43 @@ def fastapi_app():
                     s += w * float(v)
             return s
         rows_sorted = sorted(rows, key=_composite, reverse=True)
-        top_binder = rows_sorted[0]["generated_sequence"]
-        full_seq = _SAMPLE_EPITOPE + "GGGGSGGGGSGGGGSGGGGSGGGGSGGGGS" + top_binder
+        # Fold every candidate (in the sorted order). The same fold_remote
+        # container reuses its loaded ESMFold model across calls, so this
+        # is a sequential ~2-3 s per fold = ~25-30 s warm; on a cold
+        # container the first call also pays the ~30 s model-load cost.
+        # Total cold-path: ~60-90 s, comfortably under the 300 s asgi
+        # timeout. Resulting sample bundle is ~500 KB (10 PDBs).
+        LINKER = "GGGGSGGGGSGGGGSGGGGSGGGGSGGGGS"
+        ep_len = len(_SAMPLE_EPITOPE)
+        structures = {}
         try:
-            local = await fold_remote.remote.aio(full_seq)
-            structure = {
-                "pdb": local["pdb"],
-                "epitope_resi": [1, len(_SAMPLE_EPITOPE)],
-                "linker_resi":  [len(_SAMPLE_EPITOPE) + 1, len(_SAMPLE_EPITOPE) + 30],
-                "binder_resi":  [len(_SAMPLE_EPITOPE) + 30 + 1, len(full_seq)],
-                "epitope_len":  len(_SAMPLE_EPITOPE),
-                "linker_len":   30,
-                "binder_len":   len(top_binder),
-                "total_len":    len(full_seq),
-                "pLDDT_mean":   float(local["plddt_mean"]),
-                "source":       "local-esmfold-v1",
-            }
+            for rank, row in enumerate(rows_sorted):
+                binder = row["generated_sequence"]
+                full_seq = _SAMPLE_EPITOPE + LINKER + binder
+                local = await fold_remote.remote.aio(full_seq)
+                structures[rank] = {
+                    "pdb":          local["pdb"],
+                    "epitope_resi": [1, ep_len],
+                    "linker_resi":  [ep_len + 1, ep_len + 30],
+                    "binder_resi":  [ep_len + 30 + 1, len(full_seq)],
+                    "epitope_len":  ep_len,
+                    "linker_len":   30,
+                    "binder_len":   len(binder),
+                    "total_len":    len(full_seq),
+                    "pLDDT_mean":   float(local["plddt_mean"]),
+                    "source":       "local-esmfold-v1",
+                }
         except Exception as exc:
-            raise HTTPException(status_code=500, detail=f"sample fold failed: {exc}")
+            raise HTTPException(status_code=500,
+                                detail=f"sample fold failed at rank {len(structures)}: {exc}")
         bundle = {
             "epitope":     _SAMPLE_EPITOPE,
             "epitope_label": _SAMPLE_LABEL,
             "model":       "GDPO_DPO",
-            "candidates":  rows,
-            "structure":   structure,
-            "n_returned":  len(rows),
+            "candidates":  rows_sorted,        # already sorted by composite (rank == index)
+            "structure":   structures[0],      # backward compat: top-ranked structure
+            "structures":  structures,         # NEW: all 10, keyed by rank
+            "n_returned":  len(rows_sorted),
             "cached":      False,
         }
         _sample_cache.update(bundle)
@@ -778,6 +790,7 @@ def warm_sample():
           f"epitope={payload.get('epitope_label')}; "
           f"n_candidates={payload.get('n_returned')}; "
           f"top_pLDDT={payload.get('structure', {}).get('pLDDT_mean'):.1f}; "
+          f"n_structures={len(payload.get('structures', {}))}; "
           f"cached={payload.get('cached')}")
 
 

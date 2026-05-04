@@ -1125,6 +1125,39 @@ async function loadMainStructure(idx) {
   }
 }
 
+// Synchronous variant of deepDive() that paints the 10-mini-viewer grid
+// from PDBs already present in STATE.structures (e.g. supplied by
+// /api/sample). No network calls; renders 3Dmol viewers immediately.
+function renderDeepDiveFromCache() {
+  const grid = $('viewer-grid');
+  grid.style.display = 'grid';
+  grid.innerHTML = '';
+  STATE.candidates.forEach((c, i) => {
+    const struct = STATE.structures[i];
+    const muts = mutationsVsRef(c.generated_sequence, STATE.reference);
+    const card = document.createElement('div');
+    card.className = 'viewer-card' + (i === STATE.selectedIdx ? ' selected' : '');
+    card.dataset.idx = i;
+    card.title = `Click to load #${i + 1} into the main viewer above`;
+    card.innerHTML = `
+      <div id="mini-${i}" class="viewer-mini"></div>
+      <div class="vc-foot">
+        <span class="vc-num">#${i + 1}</span>
+        <span class="vc-plddt" id="mini-meta-${i}">pLDDT <strong>${struct.pLDDT_mean.toFixed(1)}</strong> · <span style="color:var(--primary-gold);">${muts.length} muts</span></span>
+      </div>`;
+    card.addEventListener('click', () => {
+      selectDesign(i);
+      document.getElementById('structure-main').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    grid.appendChild(card);
+    // Render the 3Dmol viewer right away — we already have the PDB.
+    STATE.miniViewers[i] = renderStructureViewer(`mini-${i}`, struct, muts, 220);
+  });
+  $('deepdive-btn').textContent = 'All 10 structures rendered';
+  $('deepdive-btn').disabled = true;
+  $('deepdive-status').textContent = `${STATE.candidates.length} structures loaded from sample cache`;
+}
+
 async function deepDive() {
   const btn = $('deepdive-btn');
   const status = $('deepdive-status');
@@ -1266,9 +1299,15 @@ async function loadSample() {
     const seqs = STATE.candidates.map(c => c.generated_sequence);
     STATE.perPosMut = computeMutCounts(seqs, STATE.reference);
     STATE.selectedIdx = 0;
-    // Pre-populate the structure cache for index 0 so the main viewer
-    // doesn't re-fetch it.
-    STATE.structures = { 0: data.structure };
+    // Pre-populate the structure cache from the bundle. /api/sample now
+    // ships PDBs for ALL ranks (not just the top); fall back to a single-
+    // entry cache if an older deploy returned only `structure`.
+    if (data.structures && typeof data.structures === 'object') {
+      STATE.structures = {};
+      Object.entries(data.structures).forEach(([k, v]) => { STATE.structures[parseInt(k, 10)] = v; });
+    } else {
+      STATE.structures = { 0: data.structure };
+    }
     STATE.miniViewers = {};
 
     $('results-meta').textContent =
@@ -1276,11 +1315,6 @@ async function loadSample() {
     renderTable();
     renderAlignment();
     renderDesignCards();
-    $('viewer-grid').style.display = 'none';
-    $('viewer-grid').innerHTML = '';
-    $('deepdive-btn').disabled = false;
-    $('deepdive-btn').textContent = 'Compute structures for all 10 →';
-    $('deepdive-status').textContent = '';
     $('results').style.display = 'block';
 
     // Render the structure for index 0 directly from the prebaked PDB.
@@ -1290,6 +1324,20 @@ async function loadSample() {
     STATE.mainViewer = renderStructureViewer('structure-main', data.structure, muts, 460);
     const conf = data.structure.pLDDT_mean >= 90 ? 'very high' : data.structure.pLDDT_mean >= 70 ? 'confident' : data.structure.pLDDT_mean >= 50 ? 'low' : 'very low';
     meta.innerHTML = `Candidate <strong>#1</strong> · ${data.structure.total_len} AA total (${data.structure.epitope_len} epitope + ${data.structure.linker_len} linker + ${data.structure.binder_len} binder) · mean pLDDT <strong>${data.structure.pLDDT_mean.toFixed(1)}</strong> (${conf}) · <span style="color:var(--dove-grey);">${sourceLabel(data.structure.source)}</span> · <span style="color:var(--primary-gold);">${muts.length} mutations vs NBv1</span> (${cdrCount} in CDRs)`;
+
+    // Render the deep-dive grid up front if all 10 prebaked structures
+    // are present. Falls through to the click-to-compute path if only the
+    // top structure was supplied (older /api/sample shape).
+    const haveAllStructures = STATE.candidates.every((_, i) => STATE.structures[i]);
+    if (haveAllStructures) {
+      renderDeepDiveFromCache();
+    } else {
+      $('viewer-grid').style.display = 'none';
+      $('viewer-grid').innerHTML = '';
+      $('deepdive-btn').disabled = false;
+      $('deepdive-btn').textContent = 'Compute structures for all 10 →';
+      $('deepdive-status').textContent = '';
+    }
 
     // Visible "this is a sample" cue.
     if (banner) {
