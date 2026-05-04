@@ -201,6 +201,20 @@ select.field-input { cursor: pointer; }
 .score-cell.bad  { background: rgba(255,157,138,0.18); color: var(--burgundy); }
 .score-cell.composite { font-weight: 800; min-width: 48px; padding: 2px 9px; box-shadow: inset 0 0 0 1px rgba(201,169,97,0.45); letter-spacing: 0.02em; }
 
+/* Banner that appears when /api/sample auto-populates the widgets on page
+   load — makes it explicit that the visible result is a precomputed sample
+   and the Generate button replaces it with a fresh run. */
+.sample-banner {
+  margin: 12px 0 14px; padding: 10px 16px;
+  border: 1px solid rgba(201,169,97,0.32);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(201,169,97,0.08), rgba(15,15,15,0.55));
+  color: var(--alabaster); font-size: 0.88rem; line-height: 1.5;
+}
+.sample-banner strong { color: var(--champagne); }
+.sample-banner code { background: rgba(0,0,0,0.45); padding: 1px 5px; border-radius: 3px; color: var(--champagne); font-size: 0.86em; }
+.sample-banner em { color: var(--dove-grey); font-style: normal; }
+
 /* Always-visible reward-key strip above the properties table. */
 .rewards-key {
   margin: 14px 0 18px; padding: 14px 18px;
@@ -515,6 +529,9 @@ select.field-input { cursor: pointer; }
         <span id="status"></span>
       </div>
     </div>
+
+    <!-- Banner shown when the page is auto-populated with a precomputed sample -->
+    <div id="sample-banner" class="sample-banner" style="display:none;"></div>
 
     <!-- RESULTS WRAPPER -->
     <div id="results" style="display:none;">
@@ -1225,6 +1242,70 @@ document.querySelectorAll('.example-btn').forEach(btn => {
   });
 })();
 
+/* =========================================================================
+   AUTO-LOAD SAMPLE on page open. Hits /api/sample which returns a cached,
+   precomputed (epitope, candidates, structure) bundle. Populates the
+   widgets so a first-time visitor sees something visual within seconds
+   instead of a blank panel until they click Generate.
+   ========================================================================= */
+async function loadSample() {
+  const banner = $('sample-banner');
+  try {
+    const r = await fetch('/api/sample');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+    if (!data.candidates || !data.candidates.length) throw new Error('empty');
+
+    // Mirror the post-Generate render path. Stamp composite + sort.
+    STATE.epitope = data.epitope;
+    STATE.model = data.model || 'GDPO_DPO';
+    STATE.candidates = data.candidates.slice(0, 10).map(c => ({
+      ...c, composite: compositeReward(c),
+    }));
+    STATE.candidates.sort((a, b) => b.composite - a.composite);
+    const seqs = STATE.candidates.map(c => c.generated_sequence);
+    STATE.perPosMut = computeMutCounts(seqs, STATE.reference);
+    STATE.selectedIdx = 0;
+    // Pre-populate the structure cache for index 0 so the main viewer
+    // doesn't re-fetch it.
+    STATE.structures = { 0: data.structure };
+    STATE.miniViewers = {};
+
+    $('results-meta').textContent =
+      `Sample: ${data.epitope_label || data.epitope.slice(0, 30)} · ${data.n_returned} candidates · ${data.model} · seed 42 · T 0.70`;
+    renderTable();
+    renderAlignment();
+    renderDesignCards();
+    $('viewer-grid').style.display = 'none';
+    $('viewer-grid').innerHTML = '';
+    $('deepdive-btn').disabled = false;
+    $('deepdive-btn').textContent = 'Compute structures for all 10 →';
+    $('deepdive-status').textContent = '';
+    $('results').style.display = 'block';
+
+    // Render the structure for index 0 directly from the prebaked PDB.
+    const meta = $('struct-meta');
+    const muts = mutationsVsRef(STATE.candidates[0].generated_sequence, STATE.reference);
+    const cdrCount = muts.filter(inCDR).length;
+    STATE.mainViewer = renderStructureViewer('structure-main', data.structure, muts, 460);
+    const conf = data.structure.pLDDT_mean >= 90 ? 'very high' : data.structure.pLDDT_mean >= 70 ? 'confident' : data.structure.pLDDT_mean >= 50 ? 'low' : 'very low';
+    meta.innerHTML = `Candidate <strong>#1</strong> · ${data.structure.total_len} AA total (${data.structure.epitope_len} epitope + ${data.structure.linker_len} linker + ${data.structure.binder_len} binder) · mean pLDDT <strong>${data.structure.pLDDT_mean.toFixed(1)}</strong> (${conf}) · <span style="color:var(--dove-grey);">${sourceLabel(data.structure.source)}</span> · <span style="color:var(--primary-gold);">${muts.length} mutations vs NBv1</span> (${cdrCount} in CDRs)`;
+
+    // Visible "this is a sample" cue.
+    if (banner) {
+      banner.innerHTML = `<strong>Sample run shown below</strong> for <code>${data.epitope_label || data.epitope}</code>. <em>Click <strong>Generate</strong> above with your own target to replace this with a fresh result.</em>`;
+      banner.style.display = 'block';
+    }
+  } catch (e) {
+    if (banner) {
+      banner.innerHTML = `Sample design unavailable (${e.message}). Click <strong>Generate</strong> above with any target to populate the widgets.`;
+      banner.style.display = 'block';
+    }
+  }
+}
+// Fire after a tick so the page chrome paints first.
+setTimeout(loadSample, 0);
+
 $('generate-btn').addEventListener('click', async () => {
   const ep = epitopeIn.value.trim().toUpperCase();
   if (ep.length < 4) { $('status').textContent = 'Enter an epitope of at least 4 amino acids.'; return; }
@@ -1250,6 +1331,8 @@ $('generate-btn').addEventListener('click', async () => {
 
   $('generate-btn').disabled = true;
   $('results').style.display = 'none';
+  // Hide the prebaked-sample banner; the user is running their own now.
+  const sb = document.getElementById('sample-banner'); if (sb) sb.style.display = 'none';
   const baseStatus = 'Generating… first call after idle takes ~30–60 s for the GPU container to warm.';
   $('status').textContent = clampNotes.length
     ? `${baseStatus} (clamped: ${clampNotes.join('; ')})`

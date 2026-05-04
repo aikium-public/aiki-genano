@@ -447,6 +447,84 @@ def fastapi_app():
     # container is recycled by Modal periodically anyway.
     _structure_cache: dict[str, dict] = {}
 
+    # Process-local "sample" cache for the /api/sample endpoint that the
+    # landing page auto-loads on visit. Computed once per container
+    # lifetime; subsequent calls are instant. Pre-populate at deploy time
+    # via `modal run modal_app.py::warm_sample` so the first real visitor
+    # doesn't pay the cold-start cost.
+    _sample_cache: dict = {}
+
+    _SAMPLE_EPITOPE = "HAEGTFTSDVSSYLEGQAAKEFIAWLVKGRG"   # GLP-1 (7-37)
+    _SAMPLE_LABEL  = "GLP-1 (7-37) — incretin peptide hormone (UniProt P01275)"
+
+    @fapi.get("/api/sample")
+    async def api_sample(request: Request):
+        """Returns a precomputed (epitope, candidates, structure) bundle so
+        the landing page can populate its widgets on first paint without
+        burning the visitor's per-IP rate limit. Cached in process memory
+        across calls; pre-populate via warm_sample after each deploy."""
+        if _sample_cache:
+            cached = dict(_sample_cache)
+            cached["cached"] = True
+            return cached
+        # Cold-path compute. Generate 10 candidates for GLP-1 + fold the top.
+        try:
+            rows = generate_remote.remote(
+                epitope=_SAMPLE_EPITOPE,
+                n_candidates=10,
+                temperature=0.7,
+                top_p=0.92,
+                model_name="GDPO_DPO",
+                seed=42,
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"sample generate failed: {exc}")
+        # Pick the highest-composite candidate as the structure subject so
+        # the prebaked render leads with the model's best foot forward.
+        WEIGHTS = [("reward_fr2_aggregation", 0.15),
+                   ("reward_hydrophobic_patch", 0.20),
+                   ("reward_liability", 0.25),
+                   ("reward_expression", 0.15),
+                   ("reward_vhh_hallmark", 0.15),
+                   ("reward_scaffold_integrity", 0.10)]
+        def _composite(r):
+            s = 0.0
+            for k, w in WEIGHTS:
+                v = r.get(k)
+                if v is not None and not (isinstance(v, float) and v != v):
+                    s += w * float(v)
+            return s
+        rows_sorted = sorted(rows, key=_composite, reverse=True)
+        top_binder = rows_sorted[0]["generated_sequence"]
+        full_seq = _SAMPLE_EPITOPE + "GGGGSGGGGSGGGGSGGGGSGGGGSGGGGS" + top_binder
+        try:
+            local = fold_remote.remote(full_seq)
+            structure = {
+                "pdb": local["pdb"],
+                "epitope_resi": [1, len(_SAMPLE_EPITOPE)],
+                "linker_resi":  [len(_SAMPLE_EPITOPE) + 1, len(_SAMPLE_EPITOPE) + 30],
+                "binder_resi":  [len(_SAMPLE_EPITOPE) + 30 + 1, len(full_seq)],
+                "epitope_len":  len(_SAMPLE_EPITOPE),
+                "linker_len":   30,
+                "binder_len":   len(top_binder),
+                "total_len":    len(full_seq),
+                "pLDDT_mean":   float(local["plddt_mean"]),
+                "source":       "local-esmfold-v1",
+            }
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"sample fold failed: {exc}")
+        bundle = {
+            "epitope":     _SAMPLE_EPITOPE,
+            "epitope_label": _SAMPLE_LABEL,
+            "model":       "GDPO_DPO",
+            "candidates":  rows,
+            "structure":   structure,
+            "n_returned":  len(rows),
+            "cached":      False,
+        }
+        _sample_cache.update(bundle)
+        return bundle
+
     @fapi.post("/api/structure")
     async def api_structure(req: StructureRequest, request: Request):
         """Fold the epitope+linker+binder concatenation. Tries local ESMFold
@@ -655,6 +733,30 @@ def warm_generate(
         print(f"  valid={r.get('is_valid_126')} "
               f"r_scaffold={r.get('reward_scaffold_integrity'):.3f} "
               f"r_liability={r.get('reward_liability'):.3f}")
+
+
+@app.local_entrypoint()
+def warm_sample():
+    """Pre-populate /api/sample so the landing page paints instantly for the
+    first real visitor after a deploy / scale-down. Run after every
+    `modal deploy modal_app.py`. Hits the deployed /api/sample endpoint
+    directly so the cache lives in the live container, not in this CLI
+    process. Note: takes 30-90 s on a cold container; subsequent /api/sample
+    requests are instant from cache."""
+    import urllib.request
+    import json as _json
+    import time as _time
+    url = "https://aikium--aiki-genano-fastapi-app.modal.run/api/sample"
+    print(f"GET {url} (this triggers the cold-path compute the first time)…")
+    t0 = _time.time()
+    body = urllib.request.urlopen(url, timeout=600).read()
+    dt = _time.time() - t0
+    payload = _json.loads(body)
+    print(f"  {dt:.1f}s, {len(body)/1024:.1f} KB; "
+          f"epitope={payload.get('epitope_label')}; "
+          f"n_candidates={payload.get('n_returned')}; "
+          f"top_pLDDT={payload.get('structure', {}).get('pLDDT_mean'):.1f}; "
+          f"cached={payload.get('cached')}")
 
 
 # ── Landing HTML (intentionally minimal — paper/Docker/Zenodo are the story) ─
