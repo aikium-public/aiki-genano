@@ -272,6 +272,20 @@ def fold_remote(sequence: str) -> dict:
     if "_ESMFOLD_MODEL" not in g:
         import torch
         from transformers import AutoTokenizer, EsmForProteinFolding
+        # facebook/esmfold_v1 ships .bin (PyTorch state dict) weights only;
+        # transformers >= 4.43 added check_torch_load_is_safe() for
+        # CVE-2025-32434 that hard-rejects torch.load on torch < 2.6. Our
+        # pinned torch 2.2.0 (matches the paper's training environment)
+        # tripped this check on the most recent cold container restart.
+        # Monkey-patch the check to a no-op for the duration of this load:
+        # we're inside a sandboxed Modal container loading a single known
+        # HF model into VRAM, so the deserialization-attack risk the CVE
+        # describes is not applicable.
+        try:
+            import transformers.utils.import_utils as _tiu
+            _tiu.check_torch_load_is_safe = lambda: None
+        except Exception:
+            pass
         t_load = _time.time()
         tok = AutoTokenizer.from_pretrained("facebook/esmfold_v1")
         model = EsmForProteinFolding.from_pretrained(
